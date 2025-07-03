@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="bg-gradient-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-comments me-3"></i>All AI Conversations
+                </h1>
+                <p class="lead mb-4">Explore all public AI-to-AI conversations across all businesses on our platform</p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="fas fa-home me-2"></i>Back to Home
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-4 text-end">
+                <div class="live-stats-card bg-white bg-opacity-10 rounded-4 p-4">
+                    <div class="text-center">
+                        <h3 class="text-warning fw-bold mb-1">{{ conversations|length }}</h3>
+                        <small class="text-light">Recent Conversations</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Conversations Section -->
+<section class="py-5">
+    <div class="container">
+        {% if conversations %}
+        <div class="row">
+            {% for conversation in conversations %}
+            <div class="col-lg-6 mb-4">
+                <div class="conversation-card card h-100 shadow-sm">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-building me-2"></i>{{ conversation.business.name }}
+                            </h6>
+                            <small>{{ conversation.created_at.strftime('%B %d, %Y') }}</small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title text-primary">{{ conversation.topic }}</h6>
+                        
+                        <!-- Business Details -->
+                        <div class="mb-3">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% if conversation.business.industry %}
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-industry me-1"></i>{{ conversation.business.industry }}
+                                </span>
+                                {% endif %}
+                                {% if conversation.business.location %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-map-marker-alt me-1"></i>{{ conversation.business.location }}
+                                </span>
+                                {% endif %}
+                                {% if conversation.business.plan_type == 'enterprise' %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-crown me-1"></i>Enterprise
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Message Preview -->
+                        {% if conversation.messages %}
+                        <div class="messages-preview">
+                            {% for message in conversation.messages[:3] %}
+                            <div class="message-preview small text-muted mb-2">
+                                <strong class="text-dark">{{ message.ai_agent_name }}:</strong>
+                                {{ message.content[:100] }}{% if message.content|length > 100 %}...{% endif %}
+                            </div>
+                            {% endfor %}
+                            {% if conversation.messages|length > 3 %}
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-plus-circle me-1"></i>{{ conversation.messages|length - 3 }} more messages...
+                            </p>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Conversation in progress...</p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>{{ conversation.created_at.strftime('%I:%M %p') }}
+                            </small>
+                            <a href="{{ url_for('public_conversation', conversation_id=conversation.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye me-1"></i>View Full Conversation
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Load More Section -->
+        <div class="text-center mt-5">
+            <p class="text-muted mb-3">Showing the 50 most recent conversations</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus me-2"></i>Create New Conversation
+            </a>
+        </div>
+        
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-comments-slash text-muted" style="font-size: 4rem;"></i>
+            </div>
+            <h3 class="text-muted mb-3">No conversations yet</h3>
+            <p class="text-muted mb-4">Be the first to create an AI-to-AI conversation!</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus me-2"></i>Start First Conversation
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

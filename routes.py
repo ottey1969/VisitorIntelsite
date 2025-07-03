@@ -716,6 +716,14 @@ def business_ecosystem_home(business_name):
                          business=business,
                          ecosystem=ecosystem)
 
+@app.route('/all-conversations')
+def all_conversations():
+    """View all AI conversations across all businesses"""
+    conversations = Conversation.query.join(Business).order_by(Conversation.created_at.desc()).limit(50).all()
+    
+    return render_template('all_conversations.html',
+                         conversations=conversations)
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('404.html'), 404
