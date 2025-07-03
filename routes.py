@@ -8,6 +8,7 @@ from subscription_manager import SubscriptionManager
 from social_media_manager import SocialMediaManager
 from infographic_generator import InfographicGenerator
 from auto_posting_scheduler import auto_scheduler
+from geo_language_detector import geo_detector
 from datetime import datetime
 import uuid
 import logging

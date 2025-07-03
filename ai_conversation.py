@@ -12,6 +12,7 @@ from urllib.parse import urljoin, urlparse
 import re
 from conversation_intelligence import ConversationIntelligence
 from subscription_manager import SubscriptionManager
+from geo_language_detector import geo_detector
 
 class AIConversationManager:
     """Manages AI-to-AI conversations using 4 different AI services"""
@@ -146,13 +147,17 @@ class AIConversationManager:
     def generate_conversation(self, business, topic: str) -> List[Tuple[str, str, str]]:
         """
         Generate a 4-round AI-to-AI conversation (16 messages total = 1 credit)
+        Auto-detects location and adapts language/culture automatically
         Returns list of tuples: (agent_name, agent_type, message_content)
         """
         
         try:
+            # Auto-detect country and get localized configuration
+            localization = geo_detector.auto_detect_and_configure()
+            
             conversation_messages = []
             
-            # Create business context for the AIs
+            # Create localized business context for the AIs
             business_context = f"""
             Business: {business.name}
             Website: {business.website}
@@ -162,6 +167,8 @@ class AIConversationManager:
             Phone: {business.phone}
             
             Topic to discuss: {topic}
+            
+            LOCALIZATION: Detected country {localization.get('country_code', 'US')} - Respond in {localization.get('language', 'English')} using local business culture and practices.
             """
             
             # Generate 4 rounds of conversation (4 messages per round = 16 total)
