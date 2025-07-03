@@ -1153,6 +1153,48 @@ def verify_system_status():
     except Exception as e:
         return jsonify({'error': str(e), 'system_status': 'error'}), 500
 
+@app.route('/admin/backup')
+@app.route('/admin/backup/<action>')
+def admin_backup(action=None):
+    """Admin backup management"""
+    from backup_system import BackupManager, create_backup, list_all_backups
+    
+    if action == 'create':
+        try:
+            backup_path = create_backup()
+            return jsonify({
+                'success': True,
+                'backup_created': backup_path,
+                'message': 'Full system backup created successfully'
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    elif action == 'list':
+        try:
+            backups = list_all_backups()
+            return jsonify({
+                'success': True,
+                'backups': backups,
+                'total_backups': len(backups)
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    else:
+        # Show backup management page
+        try:
+            backups = list_all_backups()
+            return render_template('admin_backup.html', backups=backups)
+        except Exception as e:
+            return f"<h1>Backup Management</h1><p>Available backups: {len(list_all_backups())}</p><p><a href='/admin/backup/create'>Create New Backup</a></p>"
+
 @app.route('/keepalive/generate', methods=['POST'])
 def keepalive_generate():
     """API endpoint for keepalive service to generate conversations"""
