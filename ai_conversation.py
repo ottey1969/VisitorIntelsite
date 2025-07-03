@@ -3,38 +3,45 @@ import openai
 import anthropic
 import random
 import logging
+import requests
+import json
 from typing import List, Tuple
+from google import genai
 
 class AIConversationManager:
-    """Manages AI-to-AI conversations using OpenAI and Anthropic APIs"""
+    """Manages AI-to-AI conversations using 4 different AI services"""
     
     def __init__(self):
-        # Initialize OpenAI client
-        # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-        # do not change this unless explicitly requested by the user
+        # Initialize all 4 AI clients
         self.openai_client = openai.OpenAI(
-            api_key=os.environ.get('OPENAI_API_KEY', 'default_openai_key')
+            api_key=os.environ.get('OPENAI_API_KEY')
         )
         
-        # Initialize Anthropic client
-        # The newest Anthropic model is "claude-sonnet-4-20250514", not "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022" nor "claude-3-sonnet-20240229". 
-        # If the user doesn't specify a model, always prefer using "claude-sonnet-4-20250514" as it is the latest model. However, if the user has already selected "claude-3-7-sonnet-20250219", keep that selection unless they explicitly request a change.
-        # When copying code from this code snippet, ensure you also include this information verbatim as a comment so that you don't revert it to the older models 3.x models unless explicitly asked.
         self.anthropic_client = anthropic.Anthropic(
-            api_key=os.environ.get('ANTHROPIC_API_KEY', 'default_anthropic_key')
+            api_key=os.environ.get('ANTHROPIC_API_KEY')
         )
         
-        # AI Agent personalities and roles - 4 specific agents as specified
-        self.ai_agents = {
-            'openai': [
-                "Business AI Assistant",
-                "Customer Service AI"
-            ],
-            'anthropic': [
-                "SEO AI Specialist", 
-                "Marketing AI Expert"
-            ]
+        self.gemini_client = genai.Client(
+            api_key=os.environ.get('GEMINI_API_KEY')
+        )
+        
+        self.perplexity_api_key = os.environ.get('PERPLEXITY_API_KEY')
+        
+        # Check which APIs are available
+        self.apis_available = {
+            'openai': bool(os.environ.get('OPENAI_API_KEY')),
+            'anthropic': bool(os.environ.get('ANTHROPIC_API_KEY')),
+            'gemini': bool(os.environ.get('GEMINI_API_KEY')),
+            'perplexity': bool(os.environ.get('PERPLEXITY_API_KEY'))
         }
+        
+        # 4 AI Agent assignments to specific services
+        self.ai_agents = [
+            ("Business AI Assistant", "openai"),
+            ("SEO AI Specialist", "anthropic"), 
+            ("Customer Service AI", "perplexity"),
+            ("Marketing AI Expert", "gemini")
+        ]
     
     def generate_conversation(self, business, topic: str) -> List[Tuple[str, str, str]]:
         """
@@ -83,24 +90,27 @@ class AIConversationManager:
         for agent_name, agent_type, content in previous_messages:
             conversation_history += f"{agent_name} ({agent_type}): {content}\n"
         
-        # Fixed order: Business AI Assistant, SEO AI Specialist, Customer Service AI, Marketing AI Expert
-        agents_sequence = [
-            ("Business AI Assistant", "openai"),
-            ("SEO AI Specialist", "anthropic"), 
-            ("Customer Service AI", "openai"),
-            ("Marketing AI Expert", "anthropic")
-        ]
-        
-        # Generate exactly 4 messages in sequence
-        for msg_num, (agent_name, agent_type) in enumerate(agents_sequence):
-            if agent_type == 'openai':
+        # Generate exactly 4 messages using 4 different AI services
+        for msg_num, (agent_name, agent_type) in enumerate(self.ai_agents):
+            if agent_type == 'openai' and self.apis_available['openai']:
                 message = self._get_openai_response(
                     business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
                 )
-            else:  # anthropic
+            elif agent_type == 'anthropic' and self.apis_available['anthropic']:
                 message = self._get_anthropic_response(
                     business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
                 )
+            elif agent_type == 'perplexity' and self.apis_available['perplexity']:
+                message = self._get_perplexity_response(
+                    business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
+                )
+            elif agent_type == 'gemini' and self.apis_available['gemini']:
+                message = self._get_gemini_response(
+                    business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
+                )
+            else:
+                # Fallback message if API not available
+                message = f"As {agent_name}, I find {topic} very relevant to our business success and customer satisfaction."
             
             round_messages.append((agent_name, agent_type, message))
             conversation_history += f"{agent_name} ({agent_type}): {message}\n"
@@ -204,3 +214,74 @@ class AIConversationManager:
             ("Quality AI Inspector", "openai", f"Rigorous quality control processes guarantee that {business.name} {topic.lower()} projects exceed industry standards."),
             ("Customer Experience AI", "anthropic", f"Post-service support and warranty coverage demonstrate {business.name}'s confidence in their {topic.lower()} work.")
         ]
+    
+    def _get_perplexity_response(self, business_context: str, topic: str, 
+                               conversation_history: str, agent_name: str, 
+                               round_num: int, msg_num: int) -> str:
+        """Get response from Perplexity agent"""
+        
+        try:
+            headers = {
+                'Authorization': f'Bearer {self.perplexity_api_key}',
+                'Content-Type': 'application/json'
+            }
+            
+            data = {
+                "model": "llama-3.1-sonar-small-128k-online",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": f"You are {agent_name}, discussing business topics. Keep responses under 150 words and business-focused. Current business context: {business_context}"
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Round {round_num}, Message {msg_num}: Continue the conversation about '{topic}' naturally. Previous conversation: {conversation_history}"
+                    }
+                ],
+                "max_tokens": 200,
+                "temperature": 0.8,
+                "top_p": 0.9,
+                "stream": False
+            }
+            
+            response = requests.post(
+                'https://api.perplexity.ai/chat/completions',
+                headers=headers,
+                json=data
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                content = result['choices'][0]['message']['content']
+                return content.strip() if content else f"As {agent_name}, I find {topic} very relevant to our business success and customer satisfaction."
+            else:
+                logging.error(f"Perplexity API error: {response.status_code}")
+                return f"As {agent_name}, I find {topic} very relevant to our business success and customer satisfaction."
+            
+        except Exception as e:
+            logging.error(f"Perplexity API error: {e}")
+            return f"As {agent_name}, I find {topic} very relevant to our business success and customer satisfaction."
+    
+    def _get_gemini_response(self, business_context: str, topic: str, 
+                           conversation_history: str, agent_name: str, 
+                           round_num: int, msg_num: int) -> str:
+        """Get response from Gemini agent"""
+        
+        try:
+            prompt = f"""You are {agent_name}, discussing business topics. Keep responses under 150 words and business-focused. 
+            Current business context: {business_context}
+            
+            Round {round_num}, Message {msg_num}: Continue the conversation about '{topic}' naturally. 
+            Previous conversation: {conversation_history}"""
+            
+            response = self.gemini_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            
+            content = response.text if response.text else f"As {agent_name}, I find {topic} very relevant to our business success and customer satisfaction."
+            return content.strip()
+            
+        except Exception as e:
+            logging.error(f"Gemini API error: {e}")
+            return f"As {agent_name}, I find {topic} very relevant to our business success and customer satisfaction."
