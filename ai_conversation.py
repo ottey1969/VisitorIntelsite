@@ -198,7 +198,7 @@ class AIConversationManager:
             conversation_history += f"{agent_name} ({agent_type}): {content}\n"
         
         # Discover actual pages from the business website
-        business_website = getattr(business, 'website', None)
+        business_website = getattr(business, 'website', None) if business else None
         discovered_pages = []
         if business_website:
             discovered_pages = self.discover_website_pages(business_website)
@@ -216,38 +216,122 @@ Choose the most relevant page from the discovered pages list that matches the di
 Always use the exact page paths as discovered, not generic assumptions.
 If no specific page matches, use the homepage but mention relevant sections."""
         
-        # Generate exactly 4 messages using 4 different AI services
-        # Start from a random position to vary conversation starting agents
+        # Generate exactly 4 messages using all 4 different AI services in random order
         import random
-        start_position = random.randint(0, len(self.ai_agents) - 1)
         
+        # Create a copy of all agents and shuffle for random order
+        all_agents = self.ai_agents.copy()
+        random.shuffle(all_agents)
+        
+        # GUARANTEE: All 4 agents MUST participate in each round
         for msg_num in range(4):
-            agent_index = (start_position + msg_num) % len(self.ai_agents)
-            agent_name, agent_type = self.ai_agents[agent_index]
-            if agent_type == 'openai' and self.apis_available['openai']:
-                message = self._get_openai_response(
-                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
-                )
-            elif agent_type == 'anthropic' and self.apis_available['anthropic']:
-                message = self._get_anthropic_response(
-                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
-                )
-            elif agent_type == 'perplexity' and self.apis_available['perplexity']:
-                message = self._get_perplexity_response(
-                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
-                )
-            elif agent_type == 'gemini' and self.apis_available['gemini']:
-                message = self._get_gemini_response(
-                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
-                )
-            else:
-                # Fallback message if API not available
-                message = f"As {agent_name}, I find {topic} very relevant to our business success and customer satisfaction."
+            agent_name, agent_type = all_agents[msg_num]
+            
+            # Generate message with robust fallback system
+            message = self._generate_agent_message(
+                agent_name, agent_type, enhanced_context, topic, 
+                conversation_history, round_num, msg_num + 1
+            )
             
             round_messages.append((agent_name, agent_type, message))
             conversation_history += f"{agent_name} ({agent_type}): {message}\n"
         
         return round_messages
+    
+    def _generate_agent_message(self, agent_name: str, agent_type: str, business_context: str, 
+                               topic: str, conversation_history: str, round_num: int, msg_num: int) -> str:
+        """Generate a message from a specific agent with guaranteed output"""
+        
+        try:
+            # Try API calls first
+            if agent_type == 'openai' and self.apis_available['openai']:
+                return self._get_openai_response(
+                    business_context, topic, conversation_history, agent_name, round_num, msg_num
+                )
+            elif agent_type == 'anthropic' and self.apis_available['anthropic']:
+                return self._get_anthropic_response(
+                    business_context, topic, conversation_history, agent_name, round_num, msg_num
+                )
+            elif agent_type == 'perplexity' and self.apis_available['perplexity']:
+                return self._get_perplexity_response(
+                    business_context, topic, conversation_history, agent_name, round_num, msg_num
+                )
+            elif agent_type == 'gemini' and self.apis_available['gemini']:
+                return self._get_gemini_response(
+                    business_context, topic, conversation_history, agent_name, round_num, msg_num
+                )
+            else:
+                # Generate professional fallback
+                return self._get_professional_fallback(agent_name, agent_type, topic)
+                
+        except Exception as e:
+            logging.warning(f"API error for {agent_name} ({agent_type}): {e}")
+            # Always return a professional message
+            return self._get_professional_fallback(agent_name, agent_type, topic)
+    
+    def _get_professional_fallback(self, agent_name: str, agent_type: str, topic: str) -> str:
+        """Generate a single professional message based on agent expertise"""
+        
+        import random
+        
+        fallback_responses = {
+            "Business AI Assistant": [
+                f"Our business provides comprehensive {topic} solutions with proven expertise and customer satisfaction.",
+                f"We deliver professional {topic} services backed by industry certifications and quality standards.",
+                f"Our team specializes in {topic} with extensive experience and commitment to excellence."
+            ],
+            "SEO AI Specialist": [
+                f"Strategic {topic} optimization increases local search visibility and attracts qualified customers.",
+                f"Our {topic} approach focuses on competitive positioning and search engine authority.",
+                f"Local SEO integration for {topic} enhances digital presence and customer acquisition."
+            ],
+            "Customer Service AI": [
+                f"Our {topic} service prioritizes customer satisfaction with responsive communication and support.",
+                f"We ensure exceptional {topic} experiences through dedicated customer care and quality assurance.",
+                f"Customer feedback consistently highlights our {topic} reliability and professional service."
+            ],
+            "Marketing AI Expert": [
+                f"Our {topic} marketing emphasizes unique value propositions and competitive advantages.",
+                f"Brand positioning around {topic} builds market recognition and customer trust.",
+                f"Strategic {topic} promotion showcases quality, experience, and customer satisfaction."
+            ]
+        }
+        
+        messages = fallback_responses.get(agent_name, [
+            f"As {agent_name}, I emphasize that {topic} is crucial for business success and customer satisfaction."
+        ])
+        
+        return random.choice(messages)
+    
+    def _get_agent_specific_fallback(self, agent_name: str, agent_type: str, topic: str) -> List[str]:
+        """Generate realistic fallback messages based on agent specialization"""
+        
+        fallback_responses = {
+            "Business AI Assistant": [
+                f"Our business excels in {topic} with professional expertise and customer-focused solutions.",
+                f"We provide comprehensive {topic} services with proven track record and reliability.",
+                f"Quality {topic} solutions are delivered through our experienced team and industry certifications."
+            ],
+            "SEO AI Specialist": [
+                f"Optimizing {topic} content improves search visibility and attracts qualified local customers.",
+                f"Strategic {topic} positioning helps establish authority and competitive advantage in search results.",
+                f"Local SEO optimization for {topic} increases customer discovery and business growth opportunities."
+            ],
+            "Customer Service AI": [
+                f"Customers consistently praise our {topic} approach for responsiveness and satisfaction.",
+                f"Our {topic} service includes comprehensive support and transparent communication throughout.",
+                f"We prioritize customer experience in {topic} with dedicated support and quality assurance."
+            ],
+            "Marketing AI Expert": [
+                f"Effective {topic} marketing showcases our unique value proposition and competitive advantages.",
+                f"Brand positioning around {topic} builds trust and recognition in the local market.",
+                f"Strategic {topic} promotion emphasizes quality, reliability, and customer satisfaction benefits."
+            ]
+        }
+        
+        return fallback_responses.get(agent_name, [
+            f"As {agent_name}, I find {topic} essential for business success and customer satisfaction."
+        ])
     
     def _get_openai_response(self, business_context: str, topic: str, 
                            conversation_history: str, agent_name: str, 
