@@ -44,7 +44,7 @@ def index():
                 credits_remaining=999999,
                 plan_type="enterprise",
                 is_featured=True,
-                share_url=f"https://ai-conversations.com/showcase/perfect-roofing-team"
+                share_url=f"https://{request.host}/public/conversation/1"
             )
             db.session.add(featured_business)
         else:
@@ -53,7 +53,7 @@ def index():
         
         db.session.commit()
     
-    # Get recent conversations for featured business
+    # Get recent conversations for featured business (newest first)
     recent_conversations = Conversation.query.filter_by(
         business_id=featured_business.id
     ).order_by(Conversation.created_at.desc()).limit(3).all()
@@ -221,7 +221,12 @@ def business_dashboard(business_id):
     # Generate proper showcase URL if not set
     if not business.share_url:
         from flask import request
-        business.share_url = f"{request.host_url}showcase/{business.name.lower().replace(' ', '-')}"
+        # Use the actual latest conversation URL if available
+        latest_conversation = Conversation.query.filter_by(business_id=business_id).order_by(Conversation.created_at.desc()).first()
+        if latest_conversation:
+            business.share_url = f"{request.host_url}public/conversation/{latest_conversation.id}"
+        else:
+            business.share_url = f"{request.host_url}business/{business_id}"
         db.session.commit()
     
     return render_template('business_dashboard.html', 

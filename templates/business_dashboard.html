@@ -131,15 +131,23 @@
                                 </small>
                             </div>
                             
-                            {% if business.is_unlimited or business.credits_remaining > 0 %}
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-rocket me-2"></i>Generate Conversation
-                            </button>
-                            {% else %}
-                            <button type="button" class="btn btn-outline-danger btn-lg" disabled>
-                                <i class="fas fa-exclamation-triangle me-2"></i>Insufficient Credits
-                            </button>
-                            {% endif %}
+                            <div class="d-flex gap-2 justify-content-center">
+                                {% if business.is_unlimited or business.credits_remaining > 0 %}
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-rocket me-2"></i>Generate Conversation
+                                </button>
+                                {% else %}
+                                <button type="button" class="btn btn-outline-danger btn-lg" disabled>
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Insufficient Credits
+                                </button>
+                                {% endif %}
+                                
+                                {% if conversations %}
+                                <a href="/public/conversation/{{ conversations[0].id }}" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-eye me-2"></i>View Latest
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
                     </form>
                 </div>
