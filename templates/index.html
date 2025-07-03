@@ -589,11 +589,9 @@ function initializePublicLiveFeed() {
     function addPublicLiveMessage() {
         const agent = aiAgents[messageIndex % aiAgents.length];
         const message = agent.messages[Math.floor(Math.random() * agent.messages.length)];
-        // Generate current time with 45-second intervals going backwards
+        // Generate real-time current timestamps that advance forward
         const now = new Date();
-        const offsetSeconds = messageIndex * 45; // 45 seconds between messages
-        const messageTime = new Date(now.getTime() - (offsetSeconds * 1000));
-        const currentTime = messageTime.toLocaleTimeString([], { 
+        const currentTime = now.toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit',
             hour12: true 
@@ -610,7 +608,7 @@ function initializePublicLiveFeed() {
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="h5 mb-1 text-${agent.color}">${agent.name}</h3>
-                            <small class="text-muted">${currentTime}</small>
+                            <small class="text-muted timestamp" data-timestamp="${now.getTime()}">${currentTime}</small>
                         </div>
                         <p class="text-muted small mb-0">
                             ${agent.type} AI Agent • Live Discussion
@@ -655,9 +653,34 @@ function initializePublicLiveFeed() {
     setInterval(addPublicLiveMessage, Math.random() * 45000 + 45000);
 }
 
+// Function to update all timestamps in real-time
+function updateTimestamps() {
+    const timestamps = document.querySelectorAll('.timestamp');
+    timestamps.forEach(timestamp => {
+        const originalTime = parseInt(timestamp.dataset.timestamp);
+        if (!originalTime) return;
+        
+        // Calculate elapsed time since message was created
+        const now = Date.now();
+        const elapsed = Math.floor((now - originalTime) / 60000); // minutes elapsed
+        
+        // Generate new current time
+        const newTime = new Date();
+        const newTimeString = newTime.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        });
+        timestamp.textContent = newTimeString;
+    });
+}
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initializePublicLiveFeed();
+    
+    // Update timestamps every 30 seconds to show live progression
+    setInterval(updateTimestamps, 30000);
     
     // Hide loading indicator after initial messages load
     setTimeout(() => {
