@@ -304,6 +304,16 @@ function showNotification(message, type = 'info') {
 
 // Auto-refresh functionality
 function initializeAutoRefresh() {
+    // Auto-refresh homepage live feed every 45 seconds
+    if (window.location.pathname === '/') {
+        setInterval(function() {
+            // Only refresh if user is active (not idle)
+            if (document.visibilityState === 'visible') {
+                refreshLiveConversationFeed();
+            }
+        }, 45000); // 45 seconds
+    }
+    
     // Auto-refresh dashboard every 2 minutes
     if (window.location.pathname.includes('/business/')) {
         setInterval(function() {
@@ -313,6 +323,28 @@ function initializeAutoRefresh() {
             }
         }, 120000); // 2 minutes
     }
+}
+
+// Refresh live conversation feed without full page reload
+function refreshLiveConversationFeed() {
+    const liveFeedContainer = document.querySelector('.live-conversation-feed');
+    if (!liveFeedContainer) return;
+    
+    fetch('/')
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newFeed = doc.querySelector('.live-conversation-feed');
+            
+            if (newFeed) {
+                liveFeedContainer.innerHTML = newFeed.innerHTML;
+                console.log('Live conversation feed refreshed');
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing live feed:', error);
+        });
 }
 
 // Conversation topic suggestions

@@ -269,9 +269,15 @@
                                 </div>
                             </div>
                             <div class="col-md-4 text-end">
-                                <a href="/public/conversation/1" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-external-link-alt me-1"></i>View Public URL
-                                </a>
+                                {% if recent_conversations %}
+                                    <a href="/public/conversation/{{ recent_conversations[0].id }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-external-link-alt me-1"></i>View Public URL
+                                    </a>
+                                {% else %}
+                                    <a href="/public/conversation/1" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-external-link-alt me-1"></i>View Public URL
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
