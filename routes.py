@@ -948,6 +948,16 @@ def generate_infographic(business_id, conversation_id):
     except Exception as e:
         logging.error(f"Error generating infographic: {str(e)}")
         flash('An error occurred while generating the infographic. Please try again.', 'error')
+
+@app.route('/sample-infographic')
+def sample_infographic():
+    """Serve the sample infographic directly"""
+    try:
+        from flask import send_from_directory
+        return send_from_directory('static', 'sample_infographic.png')
+    except Exception as e:
+        logging.error(f"Error serving sample infographic: {str(e)}")
+        return "Sample infographic not found", 404
         return redirect(url_for('view_conversation', conversation_id=conversation_id))
 
 @app.route('/business/<int:business_id>/social-media/setup')
