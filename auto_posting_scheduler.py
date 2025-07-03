@@ -13,7 +13,7 @@ from sqlalchemy import and_
 import threading
 import time as time_module
 
-from app import db
+from app import db, app
 from models import Business, Conversation, SocialMediaPost, SocialMediaSettings
 from social_media_manager import SocialMediaManager
 from infographic_generator import InfographicGenerator
@@ -57,16 +57,17 @@ class AutoPostingScheduler:
     
     def _check_and_post(self):
         """Check if it's time to post and execute posts"""
-        # Get all monthly subscribers with enabled social media
-        monthly_businesses = Business.query.filter(
-            Business.subscription_type.in_(['monthly_basic', 'monthly_pro', 'monthly_enterprise'])
-        ).all()
-        
-        for business in monthly_businesses:
-            try:
-                self._process_business_posts(business)
-            except Exception as e:
-                print(f"Error processing business {business.id}: {e}")
+        with app.app_context():
+            # Get all monthly subscribers with enabled social media
+            monthly_businesses = Business.query.filter(
+                Business.subscription_type.in_(['monthly_basic', 'monthly_pro', 'monthly_enterprise'])
+            ).all()
+            
+            for business in monthly_businesses:
+                try:
+                    self._process_business_posts(business)
+                except Exception as e:
+                    print(f"Error processing business {business.id}: {e}")
     
     def _process_business_posts(self, business: Business):
         """Process automatic posts for a business based on their timezone"""

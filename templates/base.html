@@ -18,7 +18,11 @@
     <meta property="twitter:title" content="{% block twitter_title %}How Public AI-to-AI Conversations Drive Business Promotion and Search Engine Visibility{% endblock %}">
     <meta property="twitter:description" content="{% block twitter_description %}Public AI-to-AI Conversations create indexed, SEO-optimized content that drives Business Promotion and enhances Search Engine Visibility.{% endblock %}">
     
-    <title>{% block title %}How Public AI-to-AI Conversations Drive Business Promotion and Search Engine Visibility | Perfect Roofing Team Live Demo{% endblock %}</title>
+    <title>{% block title %}Visitor Intel - AI Conversations Drive Business Growth | AI-Powered Marketing Platform{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -54,8 +58,9 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
-                <i class="fas fa-robot me-2"></i>Public AI-to-AI Conversations
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='visitor_intel_logo.png') }}" alt="Visitor Intel" height="40" class="me-2">
+                <span>Visitor Intel</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
