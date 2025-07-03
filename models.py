@@ -17,6 +17,7 @@ class Business(db.Model):
     share_url = db.Column(String(500))
     plan_type = db.Column(String(50), default='basic')  # basic, enterprise
     custom_domain = db.Column(String(200))  # For enterprise customers
+    is_featured = db.Column(Boolean, default=False)  # Featured on homepage
     
     # Relationship to conversations
     conversations = db.relationship('Conversation', backref='business', lazy=True)

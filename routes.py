@@ -16,29 +16,39 @@ payment_handler = PaymentHandler()
 def index():
     """Main landing page showcasing AI-to-AI conversations"""
     
-    # Get Perfect Roofing Team showcase business
-    perfect_roofing = Business.query.filter_by(name="Perfect Roofing Team").first()
+    # Get the currently featured business (or default to Perfect Roofing Team)
+    featured_business = Business.query.filter_by(is_featured=True).first()
     
-    if not perfect_roofing:
-        # Create Perfect Roofing Team as showcase business with unlimited credits
-        perfect_roofing = Business(
-            name="Perfect Roofing Team",
-            website="https://perfectroofingteam.com",
-            description="Expert roofing contractors serving New Jersey with 10+ years experience. 24/7 emergency services, quality materials, and 100% satisfaction guarantee.",
-            location="Lodi, New Jersey",
-            phone="+1 862 2386 353",
-            email="info@perfectroofingteam.com",
-            industry="Roofing & Construction",
-            is_unlimited=True,
-            credits_remaining=999999,
-            share_url=f"https://ai-conversations.com/showcase/perfect-roofing-team"
-        )
-        db.session.add(perfect_roofing)
+    if not featured_business:
+        # Get or create Perfect Roofing Team as default showcase business
+        featured_business = Business.query.filter_by(name="Perfect Roofing Team").first()
+        
+        if not featured_business:
+            # Create Perfect Roofing Team as default featured business
+            featured_business = Business(
+                name="Perfect Roofing Team",
+                website="https://perfectroofingteam.com",
+                description="Expert roofing contractors serving New Jersey with 10+ years experience. 24/7 emergency services, quality materials, and 100% satisfaction guarantee.",
+                location="Lodi, New Jersey",
+                phone="+1 862 2386 353",
+                email="info@perfectroofingteam.com",
+                industry="Roofing & Construction",
+                is_unlimited=True,
+                credits_remaining=999999,
+                plan_type="enterprise",
+                is_featured=True,
+                share_url=f"https://ai-conversations.com/showcase/perfect-roofing-team"
+            )
+            db.session.add(featured_business)
+        else:
+            # Set Perfect Roofing Team as featured if no business is featured
+            featured_business.is_featured = True
+        
         db.session.commit()
     
-    # Get recent conversations for Perfect Roofing Team
+    # Get recent conversations for featured business
     recent_conversations = Conversation.query.filter_by(
-        business_id=perfect_roofing.id
+        business_id=featured_business.id
     ).order_by(Conversation.created_at.desc()).limit(3).all()
     
     # If no conversations exist, create sample ones
@@ -75,7 +85,7 @@ def index():
         
         for conv_data in sample_conversations:
             conversation = Conversation(
-                business_id=perfect_roofing.id,
+                business_id=featured_business.id,
                 topic=conv_data["topic"],
                 status="completed",
                 credits_used=1
@@ -97,7 +107,7 @@ def index():
         
         # Refresh recent conversations
         recent_conversations = Conversation.query.filter_by(
-            business_id=perfect_roofing.id
+            business_id=featured_business.id
         ).order_by(Conversation.created_at.desc()).limit(3).all()
     
     # Get credit packages
@@ -123,7 +133,7 @@ def index():
     total_messages_today = 2871
     
     return render_template('index.html', 
-                         perfect_roofing=perfect_roofing,
+                         business=featured_business,
                          recent_conversations=recent_conversations,
                          credit_packages=credit_packages,
                          total_messages_today=total_messages_today)
@@ -704,6 +714,48 @@ def business_ecosystem_home(business_name):
     return render_template('business_ecosystem_home.html',
                          business=business,
                          ecosystem=ecosystem)
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.route('/admin')
+def admin_dashboard():
+    """Admin dashboard to manage featured business"""
+    all_businesses = Business.query.all()
+    featured_business = Business.query.filter_by(is_featured=True).first()
+    
+    return render_template('admin_dashboard.html', 
+                         businesses=all_businesses,
+                         featured_business=featured_business)
+
+@app.route('/admin/set-featured/<int:business_id>', methods=['POST'])
+def set_featured_business(business_id):
+    """Set a business as the featured showcase"""
+    # Remove featured status from all businesses
+    Business.query.update({'is_featured': False})
+    
+    # Set the selected business as featured
+    business = Business.query.get_or_404(business_id)
+    business.is_featured = True
+    
+    db.session.commit()
+    
+    flash(f'{business.name} is now the featured business!', 'success')
+    return redirect('/admin')
+
+@app.route('/admin/upgrade-enterprise/<int:business_id>', methods=['POST'])
+def upgrade_to_enterprise(business_id):
+    """Upgrade a business to Enterprise plan"""
+    business = Business.query.get_or_404(business_id)
+    business.plan_type = 'enterprise'
+    business.is_unlimited = True
+    business.credits_remaining = -1  # Unlimited
+    
+    db.session.commit()
+    
+    flash(f'{business.name} upgraded to Enterprise plan!', 'success')
+    return redirect('/admin')
 
 @app.errorhandler(404)
 def not_found_error(error):

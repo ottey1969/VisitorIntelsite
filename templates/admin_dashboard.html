@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Business Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="fas fa-cog text-primary"></i> Admin Dashboard</h1>
+                    <a href="/" class="btn btn-outline-primary">
+                        <i class="fas fa-home"></i> Back to Home
+                    </a>
+                </div>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <!-- Current Featured Business -->
+                {% if featured_business %}
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h4><i class="fas fa-star"></i> Currently Featured Business</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h5>{{ featured_business.name }}</h5>
+                                <p class="text-muted mb-2">{{ featured_business.industry }} | {{ featured_business.location or 'Location not specified' }}</p>
+                                <p>{{ featured_business.description or 'No description available' }}</p>
+                                <div class="mt-3">
+                                    <span class="badge bg-success">{{ featured_business.plan_type.title() }} Plan</span>
+                                    {% if featured_business.is_unlimited %}
+                                        <span class="badge bg-warning">Unlimited Credits</span>
+                                    {% else %}
+                                        <span class="badge bg-info">{{ featured_business.credits_remaining }} Credits</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <a href="/business/{{ featured_business.name.lower().replace(' ', '-') }}/" 
+                                   class="btn btn-success mb-2" target="_blank">
+                                    <i class="fas fa-external-link-alt"></i> View Ecosystem
+                                </a>
+                                <br>
+                                <a href="/dashboard/{{ featured_business.id }}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="fas fa-chart-bar"></i> Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- All Businesses -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-building"></i> All Registered Businesses</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if businesses %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Business Name</th>
+                                        <th>Industry</th>
+                                        <th>Location</th>
+                                        <th>Plan</th>
+                                        <th>Credits</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for business in businesses %}
+                                    <tr class="{{ 'table-success' if business.is_featured else '' }}">
+                                        <td>
+                                            <strong>{{ business.name }}</strong>
+                                            {% if business.is_featured %}
+                                                <i class="fas fa-star text-warning ms-2" title="Featured"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ business.industry or 'Not specified' }}</td>
+                                        <td>{{ business.location or 'Not specified' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if business.plan_type == 'enterprise' else 'primary' }}">
+                                                {{ business.plan_type.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if business.is_unlimited %}
+                                                <span class="badge bg-warning">Unlimited</span>
+                                            {% else %}
+                                                {{ business.credits_remaining }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if business.is_unlimited or business.credits_remaining > 0 else 'danger' }}">
+                                                {{ 'Active' if business.is_unlimited or business.credits_remaining > 0 else 'Inactive' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if not business.is_featured %}
+                                                <form method="POST" action="/admin/set-featured/{{ business.id }}" style="display: inline;">
+                                                    <button type="submit" class="btn btn-outline-warning" 
+                                                            onclick="return confirm('Set {{ business.name }} as featured business?')">
+                                                        <i class="fas fa-star"></i> Feature
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                                
+                                                {% if business.plan_type != 'enterprise' %}
+                                                <form method="POST" action="/admin/upgrade-enterprise/{{ business.id }}" style="display: inline;">
+                                                    <button type="submit" class="btn btn-outline-success"
+                                                            onclick="return confirm('Upgrade {{ business.name }} to Enterprise?')">
+                                                        <i class="fas fa-arrow-up"></i> Enterprise
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                                
+                                                <a href="/dashboard/{{ business.id }}" class="btn btn-outline-primary">
+                                                    <i class="fas fa-chart-bar"></i> View
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-building fa-3x text-muted mb-3"></i>
+                            <h5>No Businesses Registered</h5>
+                            <p class="text-muted">Businesses will appear here once they register.</p>
+                            <a href="/register-business" class="btn btn-primary">Register First Business</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-primary">{{ businesses|length }}</h3>
+                                <p class="text-muted mb-0">Total Businesses</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-success">{{ businesses|selectattr('plan_type', 'equalto', 'enterprise')|list|length }}</h3>
+                                <p class="text-muted mb-0">Enterprise Plans</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-warning">{{ businesses|selectattr('is_unlimited')|list|length }}</h3>
+                                <p class="text-muted mb-0">Unlimited Credits</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-info">{{ (businesses|selectattr('credits_remaining', 'greaterthan', 0)|list|length) if businesses else 0 }}</h3>
+                                <p class="text-muted mb-0">Active Accounts</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

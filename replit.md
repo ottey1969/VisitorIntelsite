@@ -39,7 +39,9 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Package Management**: Different credit packages with pricing tiers
 
 ### Business Showcase System
-- **Perfect Roofing Team**: Permanent showcase business with unlimited credits
+- **Featured Business Logic**: Dynamic showcasing system with database-driven selection
+- **Admin Dashboard**: `/admin` interface for changing featured business and managing plans
+- **Enterprise Upgrades**: One-click promotion to Enterprise unlimited plans
 - **Public URLs**: SEO-optimized conversation pages for search engine indexing
 - **Real-time Updates**: Live conversation generation and display
 
@@ -113,6 +115,9 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **July 03, 2025**: Complete 4-AI platform deployment with all APIs active
 - **24/7 Operation**: Keepalive monitoring and auto-content generation implemented
 - **SEO Infrastructure**: Public conversation pages with full search engine optimization
+- **Admin System**: Added `/admin` dashboard for managing featured businesses and Enterprise upgrades
+- **Featured Business Logic**: Dynamic showcasing system replacing hardcoded Perfect Roofing Team
+- **Enterprise Management**: One-click business promotion and plan upgrades through admin interface
 
 ## Changelog
 - July 03, 2025: Initial setup and full 4-AI system deployment
