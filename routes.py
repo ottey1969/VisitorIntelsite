@@ -1031,6 +1031,78 @@ def get_posting_preview(business_id):
         logging.error(f"Error getting preview: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/keepalive/generate', methods=['POST'])
+def keepalive_generate():
+    """API endpoint for keepalive service to generate conversations"""
+    try:
+        # Get Perfect Roofing Team (or first featured business)
+        business = Business.query.filter_by(is_featured=True).first()
+        if not business:
+            business = Business.query.first()
+        
+        if not business:
+            return jsonify({'error': 'No business found'}), 404
+            
+        # Random topic selection
+        topics = [
+            "Emergency Roof Repair Services and 24/7 Availability",
+            "Professional Roofing Installation with Quality Materials", 
+            "Customer Satisfaction and Transparent Pricing Policy",
+            "Storm Damage Restoration and Insurance Claims",
+            "Preventive Roof Maintenance and Inspection Services",
+            "Licensed Contractors and Industry Certifications",
+            "Residential vs Commercial Roofing Solutions",
+            "Energy Efficient Roofing and Modern Materials"
+        ]
+        
+        import random
+        topic = random.choice(topics)
+        
+        # Generate conversation using smart system
+        messages = ai_manager.generate_smart_conversation(business)
+        
+        # Create conversation record
+        conversation = Conversation(
+            business_id=business.id,
+            topic=topic,
+            status='active'
+        )
+        db.session.add(conversation)
+        db.session.flush()
+        
+        # Save messages
+        for i, (agent_name, agent_type, content) in enumerate(messages):
+            message = ConversationMessage(
+                conversation_id=conversation.id,
+                ai_agent_name=agent_name,
+                ai_agent_type=agent_type,
+                content=content,
+                message_order=i + 1
+            )
+            db.session.add(message)
+        
+        # Mark conversation as completed
+        conversation.status = 'completed'
+        conversation.credits_used = 1
+        
+        # Deduct credits if not unlimited
+        if not business.is_unlimited:
+            business.credits_remaining = max(0, business.credits_remaining - 1)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'conversation_id': conversation.id,
+            'topic': topic,
+            'messages_count': len(messages)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Keepalive conversation generation failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()

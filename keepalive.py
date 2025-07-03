@@ -33,29 +33,17 @@ def check_server_health():
 def generate_conversation():
     """Generate a new AI conversation to keep the platform active"""
     try:
-        # Create a conversation for Perfect Roofing Team to keep content fresh
-        topics = [
-            "Emergency Roof Repair Services in New Jersey",
-            "Professional Roofing Installation and Quality Materials", 
-            "Customer Satisfaction and Transparent Pricing",
-            "Storm Damage Restoration and Insurance Claims",
-            "Roof Maintenance and Inspection Services",
-            "Licensed Contractors and Industry Certifications"
-        ]
-        
-        import random
-        topic = random.choice(topics)
-        
-        response = requests.post('http://localhost:5000/start-conversation', 
-                               data={
-                                   'business_id': 1,  # Perfect Roofing Team ID
-                                   'topic': topic
-                               },
-                               timeout=30)
+        response = requests.post('http://localhost:5000/keepalive/generate', 
+                               timeout=60)  # Longer timeout for AI generation
         
         if response.status_code == 200:
-            logging.info(f"Generated new conversation: {topic}")
-            return True
+            result = response.json()
+            if result.get('success'):
+                logging.info(f"Generated new conversation: {result.get('topic')} ({result.get('messages_count')} messages)")
+                return True
+            else:
+                logging.warning(f"API returned error: {result.get('error', 'Unknown error')}")
+                return False
         else:
             logging.warning(f"Failed to generate conversation: {response.status_code}")
             return False
@@ -68,14 +56,25 @@ def main():
     """Main keepalive loop"""
     logging.info("Starting AI Conversation Platform keepalive monitor...")
     
-    conversation_interval = 3600  # Generate new conversation every hour
-    health_check_interval = 300   # Health check every 5 minutes
+    conversation_interval = 1800  # Generate new conversation every 30 minutes (more frequent)
+    health_check_interval = 180   # Health check every 3 minutes (more frequent)
+    ping_interval = 60           # Server ping every minute to prevent sleep
     
     last_conversation = 0
     last_health_check = 0
+    last_ping = 0
     
     while True:
         current_time = time.time()
+        
+        # Keep server active with regular pings
+        if current_time - last_ping >= ping_interval:
+            try:
+                requests.get('http://localhost:5000/', timeout=5)
+                last_ping = current_time
+                logging.debug("Server ping successful")
+            except:
+                logging.warning("Server ping failed")
         
         # Health check
         if current_time - last_health_check >= health_check_interval:
@@ -83,18 +82,20 @@ def main():
                 last_health_check = current_time
             else:
                 logging.error("Server health check failed - manual intervention may be needed")
-                time.sleep(60)  # Wait before retrying
+                time.sleep(30)  # Shorter wait before retrying
                 continue
         
         # Generate new conversation
         if current_time - last_conversation >= conversation_interval:
             if generate_conversation():
                 last_conversation = current_time
+                logging.info("New conversation generated - keeping platform active")
             else:
-                logging.warning("Failed to generate conversation - will retry")
+                logging.warning("Failed to generate conversation - will retry in 5 minutes")
+                last_conversation = current_time - conversation_interval + 300  # Retry in 5 minutes
         
         # Wait before next check
-        time.sleep(60)  # Check every minute
+        time.sleep(30)  # Check every 30 seconds for better responsiveness
 
 if __name__ == "__main__":
     main()
