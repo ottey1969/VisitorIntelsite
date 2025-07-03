@@ -16,6 +16,15 @@
                     <a href="{{ url_for('all_conversations') }}" class="btn btn-outline-light btn-sm">
                         <i class="fas fa-list me-1"></i>View All Conversations
                     </a>
+                    {% if business.subscription_type == 'credit' %}
+                    <a href="{{ url_for('subscription_upgrade_page', business_id=business.id) }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-rocket me-1"></i>Upgrade to Monthly
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('subscription_upgrade_page', business_id=business.id) }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-cog me-1"></i>Manage Subscription
+                    </a>
+                    {% endif %}
                     <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm">
                         <i class="fas fa-home me-1"></i>Back to Home
                     </a>

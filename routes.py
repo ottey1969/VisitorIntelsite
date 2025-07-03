@@ -4,6 +4,7 @@ from models import Business, Conversation, ConversationMessage, CreditPackage, P
 from ai_conversation import AIConversationManager
 from payment_handler import PaymentHandler
 from content_ecosystem import ContentEcosystemManager
+from subscription_manager import SubscriptionManager
 from datetime import datetime
 import uuid
 import logging
@@ -11,6 +12,7 @@ import logging
 # Initialize AI conversation manager and payment handler
 ai_manager = AIConversationManager()
 payment_handler = PaymentHandler()
+subscription_manager = SubscriptionManager()
 
 @app.route('/')
 def index():
@@ -723,6 +725,49 @@ def all_conversations():
     
     return render_template('all_conversations.html',
                          conversations=conversations)
+
+@app.route('/business/<int:business_id>/subscription-upgrade')
+def subscription_upgrade_page(business_id):
+    """Show subscription upgrade options for a business"""
+    business = Business.query.get_or_404(business_id)
+    
+    # Get monthly plans
+    monthly_plans = subscription_manager.get_monthly_plans_for_display()
+    
+    # Calculate savings for each plan
+    savings_calculations = {}
+    for plan in monthly_plans:
+        savings = subscription_manager.calculate_upgrade_savings(business_id, plan['id'])
+        savings_calculations[plan['id']] = savings
+    
+    # Get current subscription status
+    subscription_status = subscription_manager.get_subscription_status(business_id)
+    
+    return render_template('subscription_upgrade.html',
+                         business=business,
+                         monthly_plans=monthly_plans,
+                         savings_calculations=savings_calculations,
+                         subscription_status=subscription_status)
+
+@app.route('/business/<int:business_id>/upgrade-subscription', methods=['POST'])
+def upgrade_subscription(business_id):
+    """Process subscription upgrade"""
+    business = Business.query.get_or_404(business_id)
+    plan_type = request.form.get('plan_type')
+    
+    if not plan_type:
+        flash('Please select a plan to upgrade to.', 'error')
+        return redirect(url_for('subscription_upgrade_page', business_id=business_id))
+    
+    # Process the upgrade
+    result = subscription_manager.upgrade_to_monthly_plan(business_id, plan_type)
+    
+    if result['success']:
+        flash(f'Successfully upgraded to {result["plan"]["name"]}! Your next billing date is {result["next_billing_date"].strftime("%B %d, %Y")}.', 'success')
+        return redirect(url_for('business_dashboard', business_id=business_id))
+    else:
+        flash(f'Upgrade failed: {result["error"]}', 'error')
+        return redirect(url_for('subscription_upgrade_page', business_id=business_id))
 
 @app.errorhandler(404)
 def not_found_error(error):
