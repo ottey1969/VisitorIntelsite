@@ -417,6 +417,109 @@ Sitemap: https://ai-conversations.com/sitemap.xml'''
     response.headers["Content-Type"] = "text/plain"
     return response
 
+@app.route('/api-status')
+def api_status():
+    """Quick API status check"""
+    from flask import jsonify
+    
+    status = {
+        'openai': ai_manager.apis_available['openai'],
+        'anthropic': ai_manager.apis_available['anthropic'],
+        'perplexity': ai_manager.apis_available['perplexity'],
+        'gemini': ai_manager.apis_available['gemini'],
+        'paypal': payment_handler.paypal_available,
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    
+    return jsonify(status)
+
+@app.route('/test-ai-services')
+def test_ai_services():
+    """Test all 4 AI services to verify they're working"""
+    from flask import jsonify
+    
+    test_results = {
+        'openai': False,
+        'anthropic': False, 
+        'perplexity': False,
+        'gemini': False,
+        'timestamp': datetime.utcnow().isoformat(),
+        'errors': []
+    }
+    
+    try:
+        # Test each AI service with a simple prompt
+        test_prompt = "What is AI?"
+        
+        # Test OpenAI
+        try:
+            if ai_manager.apis_available['openai']:
+                response = ai_manager.openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[{"role": "user", "content": test_prompt}],
+                    max_tokens=50
+                )
+                if response.choices[0].message.content:
+                    test_results['openai'] = True
+        except Exception as e:
+            test_results['errors'].append(f"OpenAI: {str(e)}")
+        
+        # Test Anthropic
+        try:
+            if ai_manager.apis_available['anthropic']:
+                response = ai_manager.anthropic_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=50,
+                    messages=[{"role": "user", "content": test_prompt}]
+                )
+                if response.content and len(response.content) > 0:
+                    test_results['anthropic'] = True
+        except Exception as e:
+            test_results['errors'].append(f"Anthropic: {str(e)}")
+        
+        # Test Perplexity
+        try:
+            if ai_manager.apis_available['perplexity']:
+                import requests
+                headers = {
+                    'Authorization': f'Bearer {ai_manager.perplexity_api_key}',
+                    'Content-Type': 'application/json'
+                }
+                data = {
+                    "model": "llama-3.1-sonar-small-128k-online",
+                    "messages": [{"role": "user", "content": test_prompt}],
+                    "max_tokens": 50
+                }
+                response = requests.post(
+                    'https://api.perplexity.ai/chat/completions',
+                    headers=headers,
+                    json=data,
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get('choices') and result['choices'][0]['message']['content']:
+                        test_results['perplexity'] = True
+        except Exception as e:
+            test_results['errors'].append(f"Perplexity: {str(e)}")
+        
+        # Test Gemini
+        try:
+            if ai_manager.apis_available['gemini']:
+                response = ai_manager.gemini_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=test_prompt
+                )
+                if response.text:
+                    test_results['gemini'] = True
+        except Exception as e:
+            test_results['errors'].append(f"Gemini: {str(e)}")
+    
+    except Exception as e:
+        test_results['errors'].append(f"General error: {str(e)}")
+    
+    return jsonify(test_results)
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('404.html'), 404
