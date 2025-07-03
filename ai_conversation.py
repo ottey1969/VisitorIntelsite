@@ -10,6 +10,8 @@ from google import genai
 import trafilatura
 from urllib.parse import urljoin, urlparse
 import re
+from conversation_intelligence import ConversationIntelligence
+from subscription_manager import SubscriptionManager
 
 class AIConversationManager:
     """Manages AI-to-AI conversations using 4 different AI services"""
@@ -29,6 +31,10 @@ class AIConversationManager:
         )
         
         self.perplexity_api_key = os.environ.get('PERPLEXITY_API_KEY')
+        
+        # Initialize intelligence and subscription managers
+        self.conversation_intelligence = ConversationIntelligence()
+        self.subscription_manager = SubscriptionManager()
         
         # Check which APIs are available
         self.apis_available = {
@@ -115,6 +121,27 @@ class AIConversationManager:
         # Cache the results
         self.website_pages_cache[website_url] = discovered_pages
         return discovered_pages
+    
+    def generate_smart_conversation(self, business) -> List[Tuple[str, str, str]]:
+        """
+        Generate an intelligent conversation with topic suggestion and subscription checking
+        Returns list of tuples: (agent_name, agent_type, message_content)
+        """
+        # Check subscription allowance first
+        allowance_check = self.subscription_manager.check_conversation_allowance(business.id)
+        if not allowance_check['can_create']:
+            raise Exception(f"Cannot create conversation: {allowance_check['reason']}")
+        
+        # Get intelligent topic suggestion
+        smart_topic = self.conversation_intelligence.get_smart_topic_suggestion(business.id)
+        
+        # Generate the conversation
+        conversation = self.generate_conversation(business, smart_topic)
+        
+        # Consume the allowance
+        self.subscription_manager.consume_conversation_allowance(business.id)
+        
+        return conversation
     
     def generate_conversation(self, business, topic: str) -> List[Tuple[str, str, str]]:
         """

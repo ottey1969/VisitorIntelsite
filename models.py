@@ -19,6 +19,14 @@ class Business(db.Model):
     custom_domain = db.Column(String(200))  # For enterprise customers
     is_featured = db.Column(Boolean, default=False)  # Featured on homepage
     
+    # Monthly subscription fields
+    subscription_type = db.Column(String(50), default='credit')  # credit, monthly_basic, monthly_pro, monthly_enterprise
+    monthly_conversation_limit = db.Column(Integer, default=0)  # Monthly conversation allowance
+    conversations_used_this_month = db.Column(Integer, default=0)  # Conversations used in current month
+    subscription_start_date = db.Column(DateTime)  # When current subscription started
+    subscription_end_date = db.Column(DateTime)  # When current subscription ends
+    auto_renew = db.Column(Boolean, default=True)  # Auto-renewal setting
+    
     # Relationship to conversations
     conversations = db.relationship('Conversation', backref='business', lazy=True)
 

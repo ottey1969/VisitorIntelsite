@@ -118,6 +118,9 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Admin System**: Added `/admin` dashboard for managing featured businesses and Enterprise upgrades
 - **Featured Business Logic**: Dynamic showcasing system replacing hardcoded Perfect Roofing Team
 - **Enterprise Management**: One-click business promotion and plan upgrades through admin interface
+- **Monthly Subscriptions**: Added monthly subscription plans ($29.99 Basic, $79.99 Pro, $299.99 Enterprise)
+- **Conversation Intelligence**: Smart topic suggestions to avoid repetition and build on previous discussions
+- **Navigation Improvements**: Fixed homepage buttons and added cross-navigation between pages
 
 ## Changelog
 - July 03, 2025: Initial setup and full 4-AI system deployment
