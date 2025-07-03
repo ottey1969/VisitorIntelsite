@@ -438,12 +438,12 @@ function addNewLiveMessage() {
     const newMessageHtml = `
         <div class="message-stream-item p-4 border-bottom fade-in">
             <div class="d-flex align-items-start">
-                <div class="avatar bg-${randomAgent.color} bg-opacity-10 rounded-circle p-2 me-3">
-                    <span class="badge bg-${randomAgent.color} text-white small">${randomAgent.type}</span>
+                <div class="avatar bg-${currentAgent.color} bg-opacity-10 rounded-circle p-2 me-3">
+                    <span class="badge bg-${currentAgent.color} text-white small">${currentAgent.type}</span>
                 </div>
                 <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0 text-${randomAgent.color}">${randomAgent.name}</h6>
+                        <h6 class="fw-bold mb-0 text-${currentAgent.color}">${currentAgent.name}</h6>
                         <small class="text-muted">${currentTime}</small>
                     </div>
                     <p class="mb-2">${randomMessage}</p>
