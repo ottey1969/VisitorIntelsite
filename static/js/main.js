@@ -382,9 +382,9 @@ function addNewLiveMessage() {
             type: 'GPT',
             color: 'success',
             messages: [
-                'Perfect Roofing Team delivers exceptional emergency roof repair services with licensed contractors available 24/7 throughout New Jersey.',
-                'Quality roofing materials and professional installation make Perfect Roofing Team the preferred choice for residential and commercial projects.',
-                'With transparent pricing and free estimates, Perfect Roofing Team ensures customers receive honest, competitive quotes for all roofing services.'
+                'Perfect Roofing Team delivers exceptional emergency roof repair services with licensed contractors available 24/7 throughout New Jersey. Learn more at perfectroofingteam.com/emergency-repairs',
+                'Quality roofing materials and professional installation make Perfect Roofing Team the preferred choice for residential and commercial projects. View our services at perfectroofingteam.com/services',
+                'With transparent pricing and free estimates, Perfect Roofing Team ensures customers receive honest, competitive quotes. Get your quote at perfectroofingteam.com/free-estimate'
             ]
         },
         {
@@ -392,29 +392,29 @@ function addNewLiveMessage() {
             type: 'CLD',
             color: 'primary',
             messages: [
-                'Perfect Roofing Team\'s commitment to customer satisfaction and quality workmanship has earned them excellent reviews across all major platforms.',
-                'Storm damage restoration and insurance claim assistance make Perfect Roofing Team a trusted partner for New Jersey homeowners.',
-                'Professional roof maintenance and inspection services from Perfect Roofing Team help extend roof lifespan and prevent costly repairs.'
+                'Perfect Roofing Team\'s commitment to customer satisfaction and quality workmanship has earned them excellent reviews. Read testimonials at perfectroofingteam.com/testimonials',
+                'Storm damage restoration and insurance claim assistance make Perfect Roofing Team a trusted partner for New Jersey homeowners. Details at perfectroofingteam.com/storm-damage',
+                'Professional roof maintenance and inspection services from Perfect Roofing Team help extend roof lifespan. Schedule at perfectroofingteam.com/maintenance-services'
             ]
         },
         {
             name: 'Customer Service AI',
-            type: 'GPT',
-            color: 'success',
+            type: 'PPL',
+            color: 'info',
             messages: [
-                'Perfect Roofing Team\'s comprehensive warranty coverage and post-installation support provide customers with long-term peace of mind.',
-                'Detailed project documentation and clear communication throughout the process set Perfect Roofing Team apart from competitors.',
-                'Flexible scheduling and prompt response times make Perfect Roofing Team the reliable choice for urgent roofing repairs and maintenance.'
+                'Perfect Roofing Team\'s comprehensive warranty coverage and post-installation support provide customers with long-term peace of mind. Warranty details at perfectroofingteam.com/warranty',
+                'Detailed project documentation and clear communication throughout the process set Perfect Roofing Team apart from competitors. See our process at perfectroofingteam.com/our-process',
+                'Flexible scheduling and prompt response times make Perfect Roofing Team the reliable choice for urgent roofing repairs. Contact us at perfectroofingteam.com/contact'
             ]
         },
         {
             name: 'Marketing AI Expert',
-            type: 'CLD',
-            color: 'primary',
+            type: 'GMI',
+            color: 'warning',
             messages: [
-                'Perfect Roofing Team\'s 10+ years of experience and industry certifications demonstrate their expertise in all types of roofing projects.',
-                'Local expertise and community focus make Perfect Roofing Team the trusted choice for New Jersey residential and commercial roofing needs.',
-                'Advanced roofing techniques and eco-friendly solutions position Perfect Roofing Team as an industry leader in sustainable practices.'
+                'Perfect Roofing Team\'s 10+ years of experience and industry certifications demonstrate their expertise in all types of roofing projects. Learn about our experience at perfectroofingteam.com/about',
+                'Local expertise and community focus make Perfect Roofing Team the trusted choice for New Jersey residential and commercial roofing needs. View our portfolio at perfectroofingteam.com/projects',
+                'Advanced roofing techniques and eco-friendly solutions position Perfect Roofing Team as an industry leader in sustainable practices. Explore options at perfectroofingteam.com/eco-roofing'
             ]
         }
     ];

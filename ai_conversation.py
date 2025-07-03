@@ -90,23 +90,36 @@ class AIConversationManager:
         for agent_name, agent_type, content in previous_messages:
             conversation_history += f"{agent_name} ({agent_type}): {content}\n"
         
+        # Enhanced business context with page reference instructions
+        enhanced_context = f"""{business_context}
+
+IMPORTANT PAGE REFERENCE INSTRUCTIONS:
+When discussing specific services or topics, always reference relevant pages from the business website instead of just the homepage.
+For roofing businesses, use pages like:
+- Emergency services: /emergency-repairs, /24-hour-service
+- Services: /services, /roofing-services, /commercial-roofing  
+- About: /about, /company, /experience
+- Contact: /contact, /get-quote, /free-estimate
+- Portfolio: /projects, /gallery, /testimonials
+Always create contextually relevant page URLs that match the discussion topic."""
+        
         # Generate exactly 4 messages using 4 different AI services
         for msg_num, (agent_name, agent_type) in enumerate(self.ai_agents):
             if agent_type == 'openai' and self.apis_available['openai']:
                 message = self._get_openai_response(
-                    business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
+                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
                 )
             elif agent_type == 'anthropic' and self.apis_available['anthropic']:
                 message = self._get_anthropic_response(
-                    business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
+                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
                 )
             elif agent_type == 'perplexity' and self.apis_available['perplexity']:
                 message = self._get_perplexity_response(
-                    business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
+                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
                 )
             elif agent_type == 'gemini' and self.apis_available['gemini']:
                 message = self._get_gemini_response(
-                    business_context, topic, conversation_history, agent_name, round_num, msg_num + 1
+                    enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1
                 )
             else:
                 # Fallback message if API not available
