@@ -151,13 +151,89 @@
                         <i class="fas fa-share-alt me-2"></i>Your Showcase URL
                     </h5>
                     <div class="bg-white bg-opacity-20 rounded-3 p-3 mb-3">
-                        <code class="text-white small">{{ business.share_url }}</code>
+                        <code class="text-white small">{{ business.share_url or 'Generating...' }}</code>
                     </div>
                     <button class="btn btn-warning btn-sm w-100" onclick="copyShareUrl()">
                         <i class="fas fa-copy me-1"></i>Copy URL
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- Content Ecosystem (Enterprise Features) -->
+<section class="py-4">
+    <div class="container">
+        <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+            <h4 class="fw-bold mb-3">
+                <i class="fas fa-globe text-success me-2"></i>Complete Content Ecosystem
+                <span class="badge bg-success ms-2">Enterprise</span>
+            </h4>
+            
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-question-circle text-primary fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">FAQ Pages</h6>
+                        <p class="small text-muted text-center mb-3">AI-generated FAQ content targeting search queries</p>
+                        <button class="btn btn-outline-primary btn-sm w-100" onclick="generateFAQ()">
+                            <i class="fas fa-magic me-1"></i>Generate FAQ
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-map-marker-alt text-info fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">Local SEO</h6>
+                        <p class="small text-muted text-center mb-3">Location-specific pages for better local search</p>
+                        <button class="btn btn-outline-info btn-sm w-100" onclick="generateLocalSEO()">
+                            <i class="fas fa-location-arrow me-1"></i>Generate Local
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-microphone text-warning fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">Voice Search</h6>
+                        <p class="small text-muted text-center mb-3">Content optimized for voice search queries</p>
+                        <button class="btn btn-outline-warning btn-sm w-100" onclick="generateVoiceSearch()">
+                            <i class="fas fa-volume-up me-1"></i>Optimize Voice
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-book text-success fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">Knowledge Base</h6>
+                        <p class="small text-muted text-center mb-3">Industry expertise articles and guides</p>
+                        <button class="btn btn-outline-success btn-sm w-100" onclick="generateKnowledgeBase()">
+                            <i class="fas fa-brain me-1"></i>Build Knowledge
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            {% if business.plan_type != 'enterprise' %}
+            <div class="text-center mt-4">
+                <div class="alert alert-info d-inline-block">
+                    <i class="fas fa-crown me-2"></i>
+                    <strong>Upgrade to Enterprise</strong> to unlock the complete content ecosystem
+                    <a href="#" class="btn btn-info btn-sm ms-2">Upgrade Now</a>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -309,7 +385,11 @@
 {% block extra_scripts %}
 <script>
 function copyShareUrl() {
-    const url = '{{ business.share_url }}';
+    const url = '{{ business.share_url or "" }}';
+    if (!url) {
+        alert('Showcase URL is being generated. Please refresh the page.');
+        return;
+    }
     navigator.clipboard.writeText(url).then(function() {
         // Show success feedback
         const button = event.target;
@@ -324,6 +404,55 @@ function copyShareUrl() {
             button.classList.add('btn-warning');
         }, 2000);
     });
+}
+
+// Content Ecosystem Functions
+function generateFAQ() {
+    showEcosystemModal('FAQ Pages', 'Generating AI-powered FAQ content targeting search queries...');
+    // Implement FAQ generation
+}
+
+function generateLocalSEO() {
+    showEcosystemModal('Local SEO', 'Creating location-specific pages for better local search visibility...');
+    // Implement Local SEO generation
+}
+
+function generateVoiceSearch() {
+    showEcosystemModal('Voice Search', 'Optimizing content for voice search queries and featured snippets...');
+    // Implement Voice Search optimization
+}
+
+function generateKnowledgeBase() {
+    showEcosystemModal('Knowledge Base', 'Building industry expertise articles and comprehensive guides...');
+    // Implement Knowledge Base generation
+}
+
+function showEcosystemModal(title, message) {
+    // Create modal for showing progress
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div class="modal fade show" style="display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Generate ${title}</h5>
+                    </div>
+                    <div class="modal-body text-center">
+                        <div class="spinner-border text-primary mb-3"></div>
+                        <p>${message}</p>
+                        <div class="alert alert-info">
+                            <strong>Enterprise Feature</strong><br>
+                            This will be available in the next update for Enterprise customers.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal').parentElement.remove()">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 // Auto-refresh conversation status

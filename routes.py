@@ -218,6 +218,12 @@ def business_dashboard(business_id):
     conversations = Conversation.query.filter_by(business_id=business_id).order_by(Conversation.created_at.desc()).all()
     credit_packages = CreditPackage.query.all()
     
+    # Generate proper showcase URL if not set
+    if not business.share_url:
+        from flask import request
+        business.share_url = f"{request.host_url}showcase/{business.name.lower().replace(' ', '-')}"
+        db.session.commit()
+    
     return render_template('business_dashboard.html', 
                          business=business, 
                          conversations=conversations,
