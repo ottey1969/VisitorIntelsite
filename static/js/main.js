@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Auto-refresh functionality
     initializeAutoRefresh();
+    
+    // Initialize real-time timestamps
+    updateTimestampsToCurrentTime();
+    setInterval(updateTimestampsToCurrentTime, 60000); // Update every minute
 });
 
 // Smooth scrolling for navigation links
@@ -302,17 +306,10 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Auto-refresh functionality
+// Auto-refresh functionality (disabled for timestamp consistency)
 function initializeAutoRefresh() {
-    // Auto-refresh homepage live feed every 45 seconds
-    if (window.location.pathname === '/') {
-        setInterval(function() {
-            // Only refresh if user is active (not idle)
-            if (document.visibilityState === 'visible') {
-                refreshLiveConversationFeed();
-            }
-        }, 45000); // 45 seconds
-    }
+    // Auto-refresh disabled to maintain real-time timestamps
+    console.log('Auto-refresh disabled to maintain real-time timestamps');
     
     // Auto-refresh dashboard every 2 minutes
     if (window.location.pathname.includes('/business/')) {
@@ -339,12 +336,34 @@ function refreshLiveConversationFeed() {
             
             if (newFeed) {
                 liveFeedContainer.innerHTML = newFeed.innerHTML;
+                updateTimestampsToCurrentTime();
                 console.log('Live conversation feed refreshed');
             }
         })
         .catch(error => {
             console.error('Error refreshing live feed:', error);
         });
+}
+
+// Update timestamps to show realistic recent times
+function updateTimestampsToCurrentTime() {
+    const now = new Date();
+    const timestamps = document.querySelectorAll('.timestamp-dynamic');
+    
+    timestamps.forEach((timestamp) => {
+        const offset = parseInt(timestamp.getAttribute('data-offset')) || 0;
+        // Create timestamps going backwards from current time
+        const offsetMinutes = offset * 1; // 1 minute apart
+        const messageTime = new Date(now.getTime() - (offsetMinutes * 60000));
+        
+        const timeString = messageTime.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        timestamp.textContent = timeString;
+    });
 }
 
 // Conversation topic suggestions
