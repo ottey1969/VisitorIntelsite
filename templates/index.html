@@ -185,13 +185,13 @@
                     </div>
                     
                     <div class="card-body p-3">
-                        <!-- Live conversation stream with card-based design -->
-                        <div class="live-conversation-stream" id="homepageLiveStream" style="max-height: 600px; overflow-y: auto;">
+                        <!-- Live conversation stream - EXACT same system as public conversation page -->
+                        <div class="live-conversation-stream" id="publicLiveStream" style="max-height: 600px; overflow-y: auto;">
                             <!-- Messages will be dynamically inserted here -->
                         </div>
                         
                         <!-- Loading indicator -->
-                        <div class="text-center py-4" id="loadingIndicator">
+                        <div class="text-center py-4">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading new conversations...</span>
                             </div>
@@ -535,35 +535,33 @@ setInterval(function() {
     }
 }, 30000);
 
-// Homepage Live Feed - Card-based System (same as public conversation page)
-function initializeHomepageLiveFeed() {
-    const streamContainer = document.getElementById('homepageLiveStream');
+// Use the EXACT same live feed system from public conversation page
+function initializePublicLiveFeed() {
+    const streamContainer = document.getElementById('publicLiveStream');
     if (!streamContainer) return;
     
     const businessName = 'Perfect Roofing Team';
     const businessWebsite = 'https://perfectroofingteam.com';
+    const conversationTopic = 'Professional Roofing Services';
+    const conversationDate = new Date();
     
     const aiAgents = [
         {
             name: 'Business AI Assistant',
             type: 'GPT',
-            color: 'primary',
+            color: 'success',
             messages: [
-                'Perfect Roofing Team delivers exceptional emergency roof repair services with licensed contractors available 24/7 throughout New Jersey.',
-                'Quality roofing materials and professional installation make Perfect Roofing Team the preferred choice for residential and commercial projects.',
-                'Professional roofing consultations and detailed estimates help New Jersey homeowners make informed decisions about their roofing needs.',
-                'Emergency storm damage repairs and insurance claim assistance make Perfect Roofing Team a trusted partner for homeowners.'
+                'Perfect Roofing Team delivers exceptional emergency roof repair services with licensed contractors available 24/7 throughout New Jersey. Learn more at perfectroofingteam.com/roofing-services/',
+                'Quality roofing materials and professional installation make Perfect Roofing Team the preferred choice for residential and commercial projects. View details at perfectroofingteam.com/commercial-residential-roofing/'
             ]
         },
         {
             name: 'SEO AI Specialist',
             type: 'CLD',
-            color: 'warning',
+            color: 'primary',
             messages: [
                 'Perfect Roofing Team\'s commitment to customer satisfaction and quality workmanship has earned them excellent reviews across all major platforms.',
-                'Storm damage restoration and insurance claim assistance make Perfect Roofing Team a trusted partner for New Jersey homeowners.',
-                'Local SEO optimization and community engagement help Perfect Roofing Team reach more homeowners in need of roofing services.',
-                'Comprehensive roofing inspections and maintenance services help extend the life of residential and commercial roofing systems.'
+                'Storm damage restoration and insurance claim assistance make Perfect Roofing Team a trusted partner for New Jersey homeowners.'
             ]
         },
         {
@@ -572,35 +570,28 @@ function initializeHomepageLiveFeed() {
             color: 'info',
             messages: [
                 'Perfect Roofing Team\'s comprehensive warranty coverage and post-installation support provide customers with long-term peace of mind.',
-                'Detailed project documentation and clear communication throughout the process set Perfect Roofing Team apart from competitors.',
-                'Responsive customer service and flexible scheduling accommodate busy homeowners and commercial property managers.',
-                'Transparent pricing and detailed estimates help customers understand the full scope of their roofing project.'
+                'Detailed project documentation and clear communication throughout the process set Perfect Roofing Team apart from competitors.'
             ]
         },
         {
             name: 'Marketing AI Expert',
             type: 'GMI',
-            color: 'success',
+            color: 'warning',
             messages: [
                 'Perfect Roofing Team\'s 10+ years of experience and industry certifications demonstrate their expertise in all types of roofing projects.',
-                'Local expertise and community focus make Perfect Roofing Team the trusted choice for New Jersey residential and commercial roofing needs.',
-                'Social media engagement and online reviews showcase Perfect Roofing Team\'s commitment to customer satisfaction and quality work.',
-                'Seasonal promotions and maintenance packages help homeowners protect their investment year-round.'
+                'Local expertise and community focus make Perfect Roofing Team the trusted choice for New Jersey residential and commercial roofing needs.'
             ]
         }
     ];
     
     let messageIndex = 0;
     
-    function addHomepageLiveMessage() {
-        // Randomize agent selection to show all 4 agents
-        const randomAgentIndex = Math.floor(Math.random() * aiAgents.length);
-        const agent = aiAgents[randomAgentIndex];
+    function addPublicLiveMessage() {
+        const agent = aiAgents[messageIndex % aiAgents.length];
         const message = agent.messages[Math.floor(Math.random() * agent.messages.length)];
-        
-        // Generate current time with 45-second intervals
+        // Generate current time with 45-second intervals going backwards
         const now = new Date();
-        const offsetSeconds = messageIndex * 45;
+        const offsetSeconds = messageIndex * 45; // 45 seconds between messages
         const messageTime = new Date(now.getTime() - (offsetSeconds * 1000));
         const currentTime = messageTime.toLocaleTimeString([], { 
             hour: '2-digit', 
@@ -657,22 +648,22 @@ function initializeHomepageLiveFeed() {
     
     // Add initial messages
     for (let i = 0; i < 4; i++) {
-        setTimeout(() => addHomepageLiveMessage(), i * 1000);
+        setTimeout(() => addPublicLiveMessage(), i * 1000);
     }
+    
+    // Add new messages every 45-90 seconds
+    setInterval(addPublicLiveMessage, Math.random() * 45000 + 45000);
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializePublicLiveFeed();
     
     // Hide loading indicator after initial messages load
     setTimeout(() => {
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        const spinner = document.querySelector('.spinner-border')?.parentElement;
+        if (spinner) spinner.style.display = 'none';
     }, 5000);
-    
-    // Add new messages every 45-90 seconds
-    setInterval(addHomepageLiveMessage, Math.random() * 45000 + 45000);
-}
-
-// Initialize homepage card-based feed when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initializeHomepageLiveFeed();
 });
 </script>
 
