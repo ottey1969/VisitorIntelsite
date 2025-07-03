@@ -1066,6 +1066,48 @@ def verify_conversation(conversation_id):
     except Exception as e:
         return jsonify({'error': str(e), 'verification_failed': True}), 404
 
+@app.route('/verify/privacy-check/<int:conversation_id>')
+def verify_privacy_check(conversation_id):
+    """Check if a conversation is private (restricted access)"""
+    try:
+        conversation = Conversation.query.get_or_404(conversation_id)
+        business = Business.query.get_or_404(conversation.business_id)
+        
+        # Check if conversation has privacy restrictions
+        is_private = getattr(conversation, 'is_private', False)
+        requires_login = getattr(conversation, 'requires_login', False)
+        access_level = getattr(conversation, 'access_level', 'public')
+        
+        privacy_data = {
+            'conversation_id': conversation.id,
+            'business_name': business.name,
+            'topic': conversation.topic,
+            'privacy_status': {
+                'is_private': is_private,
+                'requires_login': requires_login,
+                'access_level': access_level,
+                'publicly_accessible': not is_private and not requires_login,
+                'search_indexable': access_level == 'public',
+                'restricted_access': is_private or requires_login
+            },
+            'access_tests': {
+                'public_url_accessible': f"{request.url_root}public/conversation/{conversation.id}",
+                'login_required': requires_login,
+                'private_dashboard_only': is_private,
+                'search_engine_blocked': access_level != 'public'
+            },
+            'verification': {
+                'timestamp': datetime.utcnow().isoformat(),
+                'privacy_level': 'private' if (is_private or requires_login) else 'public',
+                'verification_result': 'PRIVATE' if (is_private or requires_login) else 'PUBLIC'
+            }
+        }
+        
+        return jsonify(privacy_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e), 'privacy_check_failed': True}), 404
+
 @app.route('/verify/system-status')
 def verify_system_status():
     """Public endpoint to verify the entire system is working"""
