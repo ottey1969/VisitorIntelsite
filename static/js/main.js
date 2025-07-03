@@ -382,9 +382,9 @@ function addNewLiveMessage() {
             type: 'GPT',
             color: 'success',
             messages: [
-                'Perfect Roofing Team delivers exceptional emergency roof repair services with licensed contractors available 24/7 throughout New Jersey. Learn more at perfectroofingteam.com/emergency-repairs',
-                'Quality roofing materials and professional installation make Perfect Roofing Team the preferred choice for residential and commercial projects. View our services at perfectroofingteam.com/services',
-                'With transparent pricing and free estimates, Perfect Roofing Team ensures customers receive honest, competitive quotes. Get your quote at perfectroofingteam.com/free-estimate'
+                'Perfect Roofing Team delivers exceptional emergency roof repair services with licensed contractors available 24/7 throughout New Jersey. Learn more at perfectroofingteam.com/roofing-services/',
+                'Quality roofing materials and professional installation make Perfect Roofing Team the preferred choice for residential and commercial projects. View details at perfectroofingteam.com/commercial-residential-roofing/',
+                'With transparent pricing and free estimates, Perfect Roofing Team ensures customers receive honest, competitive quotes. Learn about us at perfectroofingteam.com/about-us/'
             ]
         },
         {
@@ -392,9 +392,9 @@ function addNewLiveMessage() {
             type: 'CLD',
             color: 'primary',
             messages: [
-                'Perfect Roofing Team\'s commitment to customer satisfaction and quality workmanship has earned them excellent reviews. Read testimonials at perfectroofingteam.com/testimonials',
-                'Storm damage restoration and insurance claim assistance make Perfect Roofing Team a trusted partner for New Jersey homeowners. Details at perfectroofingteam.com/storm-damage',
-                'Professional roof maintenance and inspection services from Perfect Roofing Team help extend roof lifespan. Schedule at perfectroofingteam.com/maintenance-services'
+                'Perfect Roofing Team\'s commitment to customer satisfaction and quality workmanship has earned them excellent reviews across all major platforms.',
+                'Storm damage restoration and insurance claim assistance make Perfect Roofing Team a trusted partner for New Jersey homeowners. Explore services at perfectroofingteam.com/commercial-roofing/',
+                'Professional roof maintenance and inspection services from Perfect Roofing Team help extend roof lifespan. Learn more at perfectroofingteam.com/roofing-services/'
             ]
         },
         {

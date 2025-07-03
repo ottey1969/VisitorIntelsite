@@ -5,8 +5,11 @@ import random
 import logging
 import requests
 import json
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from google import genai
+import trafilatura
+from urllib.parse import urljoin, urlparse
+import re
 
 class AIConversationManager:
     """Manages AI-to-AI conversations using 4 different AI services"""
@@ -42,6 +45,76 @@ class AIConversationManager:
             ("Customer Service AI", "perplexity"),
             ("Marketing AI Expert", "gemini")
         ]
+        
+        # Cache for discovered website pages
+        self.website_pages_cache = {}
+    
+    def discover_website_pages(self, website_url: str) -> List[str]:
+        """Discover actual pages from a business website"""
+        
+        # Check cache first
+        if website_url in self.website_pages_cache:
+            return self.website_pages_cache[website_url]
+        
+        discovered_pages = []
+        
+        try:
+            # Get the main page content
+            response = requests.get(website_url, timeout=10, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            })
+            
+            if response.status_code == 200:
+                content = response.text
+                
+                # Extract links from the page using regex
+                links = re.findall(r'href=["\']([^"\']+)["\']', content, re.IGNORECASE)
+                
+                # Filter and clean links
+                domain = urlparse(website_url).netloc
+                
+                for link in links:
+                    # Skip external links, anchors, and non-page links
+                    if (link.startswith('http') and domain not in link) or \
+                       link.startswith('#') or link.startswith('mailto:') or \
+                       link.startswith('tel:') or link.startswith('javascript:'):
+                        continue
+                    
+                    # Clean and normalize the link
+                    if link.startswith('/'):
+                        clean_link = link
+                    elif link.startswith('./'):
+                        clean_link = link[1:]
+                    elif not link.startswith('http'):
+                        clean_link = '/' + link.lstrip('/')
+                    else:
+                        # Extract path from full URL
+                        parsed = urlparse(link)
+                        clean_link = parsed.path
+                    
+                    # Filter out unwanted pages
+                    if any(x in clean_link.lower() for x in ['.css', '.js', '.jpg', '.png', '.pdf', '.doc']):
+                        continue
+                    
+                    # Add meaningful pages
+                    if clean_link and clean_link != '/' and len(clean_link) > 1:
+                        if clean_link not in discovered_pages:
+                            discovered_pages.append(clean_link)
+                
+                # Limit to most relevant pages
+                discovered_pages = discovered_pages[:15]  # Keep top 15 pages
+                
+        except Exception as e:
+            logging.warning(f"Could not discover pages for {website_url}: {e}")
+            # Fallback to common page patterns
+            discovered_pages = [
+                '/services', '/about', '/contact', '/projects', 
+                '/testimonials', '/gallery', '/portfolio'
+            ]
+        
+        # Cache the results
+        self.website_pages_cache[website_url] = discovered_pages
+        return discovered_pages
     
     def generate_conversation(self, business, topic: str) -> List[Tuple[str, str, str]]:
         """
@@ -90,18 +163,24 @@ class AIConversationManager:
         for agent_name, agent_type, content in previous_messages:
             conversation_history += f"{agent_name} ({agent_type}): {content}\n"
         
-        # Enhanced business context with page reference instructions
-        enhanced_context = f"""{business_context}
+        # Discover actual pages from the business website
+        business_website = getattr(business, 'website', None)
+        discovered_pages = []
+        if business_website:
+            discovered_pages = self.discover_website_pages(business_website)
+        
+        # Enhanced business context with actual discovered pages
+        pages_context = ""
+        if discovered_pages:
+            pages_context = f"\n\nACTUAL WEBSITE PAGES DISCOVERED: {', '.join(discovered_pages)}"
+        
+        enhanced_context = f"""{business_context}{pages_context}
 
 IMPORTANT PAGE REFERENCE INSTRUCTIONS:
-When discussing specific services or topics, always reference relevant pages from the business website instead of just the homepage.
-For roofing businesses, use pages like:
-- Emergency services: /emergency-repairs, /24-hour-service
-- Services: /services, /roofing-services, /commercial-roofing  
-- About: /about, /company, /experience
-- Contact: /contact, /get-quote, /free-estimate
-- Portfolio: /projects, /gallery, /testimonials
-Always create contextually relevant page URLs that match the discussion topic."""
+When discussing specific services or topics, reference the actual pages discovered from this business website.
+Choose the most relevant page from the discovered pages list that matches the discussion topic.
+Always use the exact page paths as discovered, not generic assumptions.
+If no specific page matches, use the homepage but mention relevant sections."""
         
         # Generate exactly 4 messages using 4 different AI services
         for msg_num, (agent_name, agent_type) in enumerate(self.ai_agents):

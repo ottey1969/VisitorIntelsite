@@ -520,6 +520,36 @@ def test_ai_services():
     
     return jsonify(test_results)
 
+@app.route('/test-page-discovery/<business_id>')
+def test_page_discovery(business_id):
+    """Test website page discovery for a business"""
+    from flask import jsonify
+    
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        if business.website:
+            discovered_pages = ai_manager.discover_website_pages(business.website)
+            
+            return jsonify({
+                'business_name': business.name,
+                'website': business.website,
+                'discovered_pages': discovered_pages,
+                'total_pages': len(discovered_pages),
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            return jsonify({
+                'error': 'Business has no website URL configured',
+                'business_name': business.name
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        })
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('404.html'), 404
