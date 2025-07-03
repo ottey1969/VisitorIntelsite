@@ -183,7 +183,13 @@ Always use the exact page paths as discovered, not generic assumptions.
 If no specific page matches, use the homepage but mention relevant sections."""
         
         # Generate exactly 4 messages using 4 different AI services
-        for msg_num, (agent_name, agent_type) in enumerate(self.ai_agents):
+        # Start from a random position to vary conversation starting agents
+        import random
+        start_position = random.randint(0, len(self.ai_agents) - 1)
+        
+        for msg_num in range(4):
+            agent_index = (start_position + msg_num) % len(self.ai_agents)
+            agent_name, agent_type = self.ai_agents[agent_index]
             if agent_type == 'openai' and self.apis_available['openai']:
                 message = self._get_openai_response(
                     enhanced_context, topic, conversation_history, agent_name, round_num, msg_num + 1

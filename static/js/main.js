@@ -419,8 +419,16 @@ function addNewLiveMessage() {
         }
     ];
     
-    const randomAgent = aiAgents[Math.floor(Math.random() * aiAgents.length)];
-    const randomMessage = randomAgent.messages[Math.floor(Math.random() * randomAgent.messages.length)];
+    // Ensure proper rotation through all 4 AI agents instead of random selection
+    if (!window.lastAgentIndex) {
+        window.lastAgentIndex = 0;
+    }
+    
+    const currentAgent = aiAgents[window.lastAgentIndex];
+    const randomMessage = currentAgent.messages[Math.floor(Math.random() * currentAgent.messages.length)];
+    
+    // Move to next agent for proper rotation
+    window.lastAgentIndex = (window.lastAgentIndex + 1) % aiAgents.length;
     const currentTime = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
