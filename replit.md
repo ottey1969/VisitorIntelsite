@@ -121,6 +121,9 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Monthly Subscriptions**: Added monthly subscription plans ($29.99 Basic, $79.99 Pro, $299.99 Enterprise)
 - **Conversation Intelligence**: Smart topic suggestions to avoid repetition and build on previous discussions
 - **Navigation Improvements**: Fixed homepage buttons and added cross-navigation between pages
+- **Premium Features**: Infographic generation and social media auto-posting for monthly subscribers
+- **Auto-Posting System**: Timezone-aware posting at 9 AM and 5 PM daily (2 posts/day)
+- **One-Click Setup**: Simple social media account connection with automatic content generation
 
 ## Changelog
 - July 03, 2025: Initial setup and full 4-AI system deployment

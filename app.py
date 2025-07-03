@@ -34,6 +34,14 @@ with app.app_context():
     
     db.create_all()
     
+    # Start auto-posting scheduler for monthly subscribers
+    try:
+        from auto_posting_scheduler import start_auto_posting
+        start_auto_posting()
+        logging.info("Auto-posting scheduler started")
+    except Exception as e:
+        logging.error(f"Failed to start auto-posting scheduler: {e}")
+    
     # Import routes after app and db are initialized
     import routes  # noqa: F401
 

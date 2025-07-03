@@ -67,3 +67,32 @@ class Purchase(db.Model):
     payment_id = db.Column(db.String(200))  # PayPal transaction ID
     status = db.Column(db.String(50), default='pending')  # pending, completed, failed
     created_at = db.Column(DateTime, default=datetime.utcnow)
+
+class SocialMediaPost(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey('business.id'), nullable=False)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=True)
+    platform = db.Column(db.String(50), nullable=False)  # facebook, twitter, linkedin, instagram
+    content = db.Column(Text, nullable=False)
+    image_data = db.Column(Text)  # Base64 encoded image data
+    post_type = db.Column(db.String(50), default='auto')  # auto, custom, scheduled
+    scheduled_time = db.Column(DateTime)
+    posted_time = db.Column(DateTime)
+    status = db.Column(db.String(50), default='scheduled')  # scheduled, posted, failed
+    engagement_count = db.Column(Integer, default=0)
+    created_at = db.Column(DateTime, default=datetime.utcnow)
+    
+    business = db.relationship('Business', backref='social_posts')
+    conversation = db.relationship('Conversation', backref='social_posts')
+
+class SocialMediaSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey('business.id'), nullable=False)
+    platform = db.Column(db.String(50), nullable=False)  # facebook, twitter, linkedin, instagram
+    is_enabled = db.Column(Boolean, default=True)
+    posting_times = db.Column(Text)  # JSON string of posting times
+    auto_hashtags = db.Column(Boolean, default=True)
+    include_business_name = db.Column(Boolean, default=True)
+    created_at = db.Column(DateTime, default=datetime.utcnow)
+    
+    business = db.relationship('Business', backref='social_settings')

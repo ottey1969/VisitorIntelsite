@@ -5,9 +5,13 @@ from ai_conversation import AIConversationManager
 from payment_handler import PaymentHandler
 from content_ecosystem import ContentEcosystemManager
 from subscription_manager import SubscriptionManager
+from social_media_manager import SocialMediaManager
+from infographic_generator import InfographicGenerator
+from auto_posting_scheduler import auto_scheduler
 from datetime import datetime
 import uuid
 import logging
+import base64
 
 # Initialize AI conversation manager and payment handler
 ai_manager = AIConversationManager()
@@ -814,6 +818,207 @@ def upgrade_to_enterprise(business_id):
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('404.html'), 404
+
+@app.route('/business/<int:business_id>/social-media')
+def social_media_dashboard(business_id):
+    """Social media management dashboard for monthly subscribers"""
+    business = Business.query.get_or_404(business_id)
+    
+    # Check if monthly subscriber
+    if business.subscription_type == 'credit':
+        flash('Social media features are only available for monthly subscribers. Please upgrade your plan.', 'warning')
+        return redirect(url_for('subscription_upgrade_page', business_id=business_id))
+    
+    social_manager = SocialMediaManager()
+    platform_settings = social_manager.get_platform_settings(business_id)
+    analytics = social_manager.get_posting_analytics(business_id)
+    
+    return render_template('social_media_dashboard.html', 
+                         business=business, 
+                         platform_settings=platform_settings['platforms'],
+                         current_settings=platform_settings['current_settings'],
+                         analytics=analytics.get('analytics', {}))
+
+@app.route('/business/<int:business_id>/social-media/schedule', methods=['POST'])
+def schedule_social_posts(business_id):
+    """Schedule automatic social media posts"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Check if monthly subscriber
+        if business.subscription_type == 'credit':
+            return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
+        
+        selected_platforms = request.form.getlist('platforms')
+        custom_times = {}
+        
+        for platform in selected_platforms:
+            times = request.form.getlist(f'{platform}_times')
+            if times:
+                custom_times[platform] = times
+        
+        social_manager = SocialMediaManager()
+        result = social_manager.schedule_daily_posts(business_id, selected_platforms, custom_times)
+        
+        if result['success']:
+            flash(f'Successfully scheduled {result["scheduled_posts"]} posts!', 'success')
+        else:
+            flash(f'Scheduling failed: {result["error"]}', 'error')
+        
+        return redirect(url_for('social_media_dashboard', business_id=business_id))
+        
+    except Exception as e:
+        logging.error(f"Error scheduling posts: {str(e)}")
+        flash('An error occurred while scheduling posts. Please try again.', 'error')
+        return redirect(url_for('social_media_dashboard', business_id=business_id))
+
+@app.route('/business/<int:business_id>/social-media/custom-post', methods=['POST'])
+def add_custom_post(business_id):
+    """Add custom social media post"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Check if monthly subscriber
+        if business.subscription_type == 'credit':
+            return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
+        
+        platform = request.form.get('platform')
+        content = request.form.get('content')
+        scheduled_time = request.form.get('scheduled_time')
+        
+        # Handle image upload
+        image_data = None
+        if 'image' in request.files:
+            image_file = request.files['image']
+            if image_file.filename:
+                # Convert image to base64
+                image_bytes = image_file.read()
+                image_data = base64.b64encode(image_bytes).decode('utf-8')
+        
+        # Parse scheduled time
+        schedule_dt = None
+        if scheduled_time:
+            schedule_dt = datetime.fromisoformat(scheduled_time)
+        
+        social_manager = SocialMediaManager()
+        result = social_manager.add_custom_post(business_id, platform, content, image_data, schedule_dt)
+        
+        if result['success']:
+            flash('Custom post added successfully!', 'success')
+        else:
+            flash(f'Failed to add post: {result["error"]}', 'error')
+        
+        return redirect(url_for('social_media_dashboard', business_id=business_id))
+        
+    except Exception as e:
+        logging.error(f"Error adding custom post: {str(e)}")
+        flash('An error occurred while adding the post. Please try again.', 'error')
+        return redirect(url_for('social_media_dashboard', business_id=business_id))
+
+@app.route('/business/<int:business_id>/generate-infographic/<int:conversation_id>')
+def generate_infographic(business_id, conversation_id):
+    """Generate infographic from conversation for monthly subscribers"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Check if monthly subscriber
+        if business.subscription_type == 'credit':
+            flash('Infographic generation is only available for monthly subscribers.', 'warning')
+            return redirect(url_for('subscription_upgrade_page', business_id=business_id))
+        
+        infographic_generator = InfographicGenerator()
+        result = infographic_generator.generate_conversation_infographic(conversation_id)
+        
+        if result['success']:
+            # Return the image data as a downloadable file
+            from flask import Response
+            
+            image_data = base64.b64decode(result['image_data'])
+            return Response(
+                image_data,
+                mimetype='image/png',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{result["filename"]}"'
+                }
+            )
+        else:
+            flash(f'Failed to generate infographic: {result["error"]}', 'error')
+            return redirect(url_for('view_conversation', conversation_id=conversation_id))
+            
+    except Exception as e:
+        logging.error(f"Error generating infographic: {str(e)}")
+        flash('An error occurred while generating the infographic. Please try again.', 'error')
+        return redirect(url_for('view_conversation', conversation_id=conversation_id))
+
+@app.route('/business/<int:business_id>/social-media/setup')
+def social_media_setup(business_id):
+    """One-click social media setup page"""
+    business = Business.query.get_or_404(business_id)
+    
+    # Check if monthly subscriber
+    if business.subscription_type == 'credit':
+        flash('Auto-posting is only available for monthly subscribers. Please upgrade your plan.', 'warning')
+        return redirect(url_for('subscription_upgrade_page', business_id=business_id))
+    
+    # Get posting preview
+    preview = auto_scheduler.get_posting_preview(business_id)
+    
+    return render_template('social_media_setup.html', 
+                         business=business,
+                         preview=preview.get('preview', {}),
+                         platforms=SocialMediaManager.SUPPORTED_PLATFORMS)
+
+@app.route('/business/<int:business_id>/social-media/connect', methods=['POST'])
+def connect_social_accounts(business_id):
+    """Connect social media accounts for auto-posting"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Check if monthly subscriber
+        if business.subscription_type == 'credit':
+            return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
+        
+        # Get selected platforms (simplified - in production would use OAuth)
+        selected_platforms = request.form.getlist('platforms')
+        
+        # Create platform accounts dict (simplified for demo)
+        platform_accounts = {}
+        for platform in selected_platforms:
+            platform_accounts[platform] = {
+                'connected': True,
+                'username': request.form.get(f'{platform}_username', f'demo_{platform}_account')
+            }
+        
+        # Setup auto-posting
+        result = auto_scheduler.setup_business_social_accounts(business_id, platform_accounts)
+        
+        if result['success']:
+            flash('🎉 Auto-posting setup complete! Your content will post at 9 AM and 5 PM daily.', 'success')
+        else:
+            flash(f'Setup failed: {result["error"]}', 'error')
+        
+        return redirect(url_for('social_media_dashboard', business_id=business_id))
+        
+    except Exception as e:
+        logging.error(f"Error connecting social accounts: {str(e)}")
+        flash('An error occurred during setup. Please try again.', 'error')
+        return redirect(url_for('social_media_setup', business_id=business_id))
+
+@app.route('/business/<int:business_id>/social-media/preview')
+def get_posting_preview(business_id):
+    """Get preview of automatic posts"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        if business.subscription_type == 'credit':
+            return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
+        
+        preview = auto_scheduler.get_posting_preview(business_id)
+        return jsonify(preview)
+        
+    except Exception as e:
+        logging.error(f"Error getting preview: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.errorhandler(500)
 def internal_error(error):
