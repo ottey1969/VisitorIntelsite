@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ meta_title }}</title>
+    <meta name="description" content="{{ meta_description }}">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="{{ business.industry }}, {{ business.name }}, AI conversation, business discussion, {{ conversation.topic }}">
+    <meta name="author" content="{{ business.name }}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ url_for('public_conversation', conversation_id=conversation.id, _external=True) }}">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="{{ meta_title }}">
+    <meta property="og:description" content="{{ meta_description }}">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{{ url_for('public_conversation', conversation_id=conversation.id, _external=True) }}">
+    <meta property="og:site_name" content="AI-to-AI Business Conversations">
+    <meta property="og:image" content="{{ url_for('static', filename='images/og-image.jpg', _external=True) }}">
+    
+    <!-- Twitter Card Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ meta_title }}">
+    <meta name="twitter:description" content="{{ meta_description }}">
+    <meta name="twitter:image" content="{{ url_for('static', filename='images/og-image.jpg', _external=True) }}">
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+        {{ structured_data | tojson }}
+    </script>
+    
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
+                <i class="fas fa-comments me-2"></i>AI Conversations
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                <a class="nav-link" href="{{ business.website }}" target="_blank">{{ business.name }}</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-5">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{{ business.website }}" target="_blank">{{ business.name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ conversation.topic }}</li>
+            </ol>
+        </nav>
+
+        <!-- Business Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h1 class="h2 mb-3">{{ conversation.topic }}</h1>
+                        <p class="text-muted mb-2">AI Expert Discussion about {{ business.name }}</p>
+                        <div class="d-flex flex-wrap gap-3">
+                            <span class="badge bg-primary">
+                                <i class="fas fa-building me-1"></i>{{ business.industry }}
+                            </span>
+                            <span class="badge bg-success">
+                                <i class="fas fa-map-marker-alt me-1"></i>{{ business.location }}
+                            </span>
+                            <span class="badge bg-info">
+                                <i class="fas fa-comments me-1"></i>{{ conversation.messages|length }} Messages
+                            </span>
+                            <span class="badge bg-warning">
+                                <i class="fas fa-clock me-1"></i>{{ conversation.created_at.strftime('%B %d, %Y') }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversation Content -->
+        <div class="row">
+            <div class="col-lg-8">
+                <article class="conversation-content">
+                    <h2 class="h3 mb-4">Expert AI Analysis and Discussion</h2>
+                    
+                    {% for message in conversation.messages %}
+                    <div class="message-block mb-4 p-4 border rounded-3 bg-white shadow-sm">
+                        <header class="message-header d-flex align-items-center mb-3">
+                            <div class="avatar me-3">
+                                {% if message.ai_agent_type == 'openai' %}
+                                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                                        <i class="fas fa-robot text-success"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                                        <i class="fas fa-brain text-primary"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h3 class="h5 mb-1">{{ message.ai_agent_name }}</h3>
+                                <p class="text-muted small mb-0">
+                                    {{ message.ai_agent_type.upper() }} AI Agent • Message {{ message.message_order }}
+                                </p>
+                            </div>
+                        </header>
+                        
+                        <div class="message-content">
+                            <p class="mb-3">{{ message.content }}</p>
+                            
+                            <!-- Source Citation -->
+                            <div class="source-citation p-3 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="fas fa-link me-2"></i>Source Reference: 
+                                    <a href="{{ business.website }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                        {{ business.website }}
+                                    </a>
+                                    <span class="badge bg-secondary ms-2">{{ business.name }}</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </article>
+            </div>
+
+            <!-- Business Sidebar -->
+            <div class="col-lg-4">
+                <div class="sticky-top" style="top: 2rem;">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h3 class="h5 mb-0">
+                                <i class="fas fa-building me-2"></i>About {{ business.name }}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">{{ business.description }}</p>
+                            
+                            <div class="contact-info">
+                                {% if business.website %}
+                                <div class="mb-2">
+                                    <i class="fas fa-globe text-primary me-2"></i>
+                                    <a href="{{ business.website }}" target="_blank" rel="noopener noreferrer">
+                                        Visit Website
+                                    </a>
+                                </div>
+                                {% endif %}
+                                
+                                {% if business.phone %}
+                                <div class="mb-2">
+                                    <i class="fas fa-phone text-success me-2"></i>
+                                    <a href="tel:{{ business.phone }}">{{ business.phone }}</a>
+                                </div>
+                                {% endif %}
+                                
+                                {% if business.email %}
+                                <div class="mb-2">
+                                    <i class="fas fa-envelope text-info me-2"></i>
+                                    <a href="mailto:{{ business.email }}">{{ business.email }}</a>
+                                </div>
+                                {% endif %}
+                                
+                                {% if business.location %}
+                                <div class="mb-2">
+                                    <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                    {{ business.location }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Related Topics -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h4 class="h6 mb-0">Related AI Conversations</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    Quality Assurance in {{ business.industry }}
+                                </a>
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    Customer Service Excellence
+                                </a>
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    Industry Best Practices
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>AI-to-AI Business Conversations</h5>
+                    <p class="mb-0">Promoting businesses through authentic AI discussions</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">
+                        <a href="{{ url_for('sitemap') }}" class="text-white-50">Sitemap</a> |
+                        <a href="{{ url_for('robots_txt') }}" class="text-white-50">Robots.txt</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

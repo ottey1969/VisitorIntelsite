@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}{{ business.name }} - AI Conversation Dashboard{% endblock %}
+
+{% block content %}
+<!-- Business Header -->
+<section class="bg-gradient-primary text-white py-4">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="h2 fw-bold mb-2">
+                    <i class="fas fa-building me-2"></i>{{ business.name }}
+                </h1>
+                <p class="mb-0 opacity-75">{{ business.description }}</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                {% if business.is_unlimited %}
+                <span class="badge bg-warning fs-6 px-3 py-2">
+                    <i class="fas fa-infinity me-1"></i>UNLIMITED CREDITS
+                </span>
+                {% else %}
+                <span class="badge bg-success fs-6 px-3 py-2">
+                    <i class="fas fa-coins me-1"></i>{{ business.credits_remaining }} Credits
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Dashboard Stats -->
+<section class="py-4">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-comments text-primary fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-primary">{{ conversations|length }}</h3>
+                    <p class="text-muted mb-0">Total Conversations</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-eye text-success fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-success">
+                        {% set total_messages = conversations|sum(attribute='messages')|length %}
+                        {{ total_messages or 0 }}
+                    </h3>
+                    <p class="text-muted mb-0">Total Messages</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-share-alt text-warning fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-warning">1</h3>
+                    <p class="text-muted mb-0">Share URL</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-coins text-info fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-info">
+                        {% set total_credits = conversations|sum(attribute='credits_used') %}
+                        {{ total_credits or 0 }}
+                    </h3>
+                    <p class="text-muted mb-0">Credits Used</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Start New Conversation -->
+<section class="py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                    <h4 class="fw-bold mb-3">
+                        <i class="fas fa-plus-circle text-primary me-2"></i>Start New AI Conversation
+                    </h4>
+                    
+                    <form method="POST" action="{{ url_for('start_conversation') }}">
+                        <input type="hidden" name="business_id" value="{{ business.id }}">
+                        
+                        <div class="mb-3">
+                            <label for="topic" class="form-label fw-bold">Conversation Topic</label>
+                            <input type="text" class="form-control form-control-lg" id="topic" name="topic" 
+                                   placeholder="e.g., Emergency Roof Repair Services, Quality Materials and Experience" required>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Describe the business aspect or service you want the AI agents to discuss
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="conversation-cost">
+                                <small class="text-muted">
+                                    <i class="fas fa-calculator me-1"></i>
+                                    Cost: <strong>1 Credit</strong> (16 AI messages from 4 different agents)
+                                </small>
+                            </div>
+                            
+                            {% if business.is_unlimited or business.credits_remaining > 0 %}
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-rocket me-2"></i>Generate Conversation
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-danger btn-lg" disabled>
+                                <i class="fas fa-exclamation-triangle me-2"></i>Insufficient Credits
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="share-url-card bg-gradient-primary text-white rounded-4 p-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="fas fa-share-alt me-2"></i>Your Showcase URL
+                    </h5>
+                    <div class="bg-white bg-opacity-20 rounded-3 p-3 mb-3">
+                        <code class="text-white small">{{ business.share_url }}</code>
+                    </div>
+                    <button class="btn btn-warning btn-sm w-100" onclick="copyShareUrl()">
+                        <i class="fas fa-copy me-1"></i>Copy URL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Conversations -->
+<section class="py-4">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold mb-0">
+                <i class="fas fa-history text-primary me-2"></i>Conversation History
+            </h4>
+            {% if not business.is_unlimited and business.credits_remaining == 0 %}
+            <a href="#credit-packages" class="btn btn-outline-primary">
+                <i class="fas fa-plus me-1"></i>Buy Credits
+            </a>
+            {% endif %}
+        </div>
+        
+        {% if conversations %}
+        <div class="row g-4">
+            {% for conversation in conversations %}
+            <div class="col-lg-6">
+                <div class="conversation-history-card bg-white rounded-4 shadow-sm">
+                    <div class="card-header bg-light p-3 rounded-top-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="fw-bold mb-1">{{ conversation.topic }}</h6>
+                            <span class="badge bg-{{ 'success' if conversation.status == 'completed' else 'warning' }}">
+                                {{ conversation.status.title() }}
+                            </span>
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>{{ conversation.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        </small>
+                    </div>
+                    
+                    <div class="card-body p-3">
+                        {% if conversation.messages %}
+                        <div class="messages-preview">
+                            {% for message in conversation.messages[:3] %}
+                            <div class="message-preview mb-2">
+                                <div class="d-flex align-items-start">
+                                    <div class="avatar bg-{{ 'primary' if message.ai_agent_type == 'openai' else 'success' }} bg-opacity-10 rounded-circle p-1 me-2">
+                                        <i class="fas fa-robot text-{{ 'primary' if message.ai_agent_type == 'openai' else 'success' }} small"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold small text-muted">{{ message.ai_agent_name }}</div>
+                                        <p class="mb-0 small">{{ message.content[:100] }}{% if message.content|length > 100 %}...{% endif %}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            
+                            {% if conversation.messages|length > 3 %}
+                            <div class="text-center">
+                                <small class="text-muted">+ {{ conversation.messages|length - 3 }} more messages</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center mb-0">No messages yet</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-footer bg-light p-3 rounded-bottom-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-comments me-1"></i>{{ conversation.messages|length }} messages
+                            </small>
+                            <span class="badge bg-info">
+                                <i class="fas fa-coins me-1"></i>{{ conversation.credits_used }} credit
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-comments text-muted" style="font-size: 4rem; opacity: 0.3;"></i>
+            </div>
+            <h5 class="text-muted mb-3">No conversations yet</h5>
+            <p class="text-muted">Start your first AI conversation to begin building your business showcase.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Credit Packages (if needed) -->
+{% if not business.is_unlimited %}
+<section id="credit-packages" class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h3 class="fw-bold mb-3">Purchase Credits</h3>
+            <p class="text-muted">Choose a credit package to continue generating AI conversations</p>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            {% for package in credit_packages %}
+            <div class="col-lg-3 col-md-6">
+                <div class="pricing-card bg-white rounded-4 shadow-sm text-center h-100 {{ 'border-primary border-2' if package.is_popular else '' }}">
+                    {% if package.is_popular %}
+                    <div class="popular-badge bg-primary text-white px-3 py-1 rounded-bottom-3">
+                        <small class="fw-bold">RECOMMENDED</small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">{{ package.name }}</h5>
+                        <div class="price-display mb-3">
+                            <span class="h3 fw-bold text-primary">${{ "%.0f"|format(package.price) }}</span>
+                            <div class="text-muted small">{{ package.credits }} Credits</div>
+                        </div>
+                        
+                        <p class="text-muted small mb-4">{{ package.description }}</p>
+                        
+                        <ul class="list-unstyled text-start small">
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>{{ package.credits }} conversations
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>{{ package.credits * 16 }} AI messages
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>Public SEO URLs
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card-footer bg-light p-3 rounded-bottom-4">
+                        <form method="POST" action="{{ url_for('purchase_credits') }}">
+                            <input type="hidden" name="business_id" value="{{ business.id }}">
+                            <input type="hidden" name="package_id" value="{{ package.id }}">
+                            <button type="submit" class="btn btn-{{ 'primary' if package.is_popular else 'outline-primary' }} w-100">
+                                <i class="fab fa-paypal me-1"></i>Buy Now
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function copyShareUrl() {
+    const url = '{{ business.share_url }}';
+    navigator.clipboard.writeText(url).then(function() {
+        // Show success feedback
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        button.classList.remove('btn-warning');
+        button.classList.add('btn-success');
+        
+        setTimeout(function() {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-warning');
+        }, 2000);
+    });
+}
+
+// Auto-refresh conversation status
+setInterval(function() {
+    location.reload();
+}, 60000); // Refresh every minute
+</script>
+{% endblock %}
