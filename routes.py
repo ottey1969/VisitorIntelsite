@@ -1222,8 +1222,8 @@ def keepalive_generate():
         import random
         topic = random.choice(topics)
         
-        # Generate conversation using smart system
-        messages = ai_manager.generate_smart_conversation(business)
+        # Generate conversation using direct system (bypass smart system for keepalive)
+        messages = ai_manager.generate_conversation(business, topic)
         
         # Create conversation record
         conversation = Conversation(
