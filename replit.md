@@ -124,6 +124,9 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Premium Features**: Infographic generation and social media auto-posting for monthly subscribers
 - **Auto-Posting System**: Timezone-aware posting at 9 AM and 5 PM daily (2 posts/day)
 - **One-Click Setup**: Simple social media account connection with automatic content generation
+- **Visitor Intel Branding**: Complete rebrand with professional devil logo, favicon, and "Visitor Intel" identity
+- **Infographic Generator**: Professional 1080x1080 social media graphics with AI expert quotes and statistics
+- **Logo Integration**: Devil character with crown logo in navigation and favicon for browser tabs
 
 ## Changelog
 - July 03, 2025: Initial setup and full 4-AI system deployment
