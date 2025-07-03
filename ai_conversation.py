@@ -159,12 +159,12 @@ class AIConversationManager:
             
             # Create localized business context for the AIs
             business_context = f"""
-            Business: {business.name}
-            Website: {business.website}
-            Description: {business.description}
-            Location: {business.location}
-            Industry: {business.industry}
-            Phone: {business.phone}
+            Business: {getattr(business, 'name', 'Unknown Business')}
+            Website: {getattr(business, 'website', 'N/A')}
+            Description: {getattr(business, 'description', 'N/A')}
+            Location: {getattr(business, 'location', 'N/A')}
+            Industry: {getattr(business, 'industry', 'N/A')}
+            Phone: {getattr(business, 'phone', 'N/A')}
             
             Topic to discuss: {topic}
             
