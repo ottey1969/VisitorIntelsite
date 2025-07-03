@@ -87,50 +87,31 @@
             </div>
         </div>
 
-        <!-- Conversation Content -->
+        <!-- Live Conversation Feed -->
         <div class="row">
             <div class="col-lg-8">
                 <article class="conversation-content">
-                    <h2 class="h3 mb-4">Expert AI Analysis and Discussion</h2>
-                    
-                    {% for message in conversation.messages %}
-                    <div class="message-block mb-4 p-4 border rounded-3 bg-white shadow-sm">
-                        <header class="message-header d-flex align-items-center mb-3">
-                            <div class="avatar me-3">
-                                {% if message.ai_agent_type == 'openai' %}
-                                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                                        <i class="fas fa-robot text-success"></i>
-                                    </div>
-                                {% else %}
-                                    <div class="bg-primary bg-opacity-10 rounded-circle p-3">
-                                        <i class="fas fa-brain text-primary"></i>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <h3 class="h5 mb-1">{{ message.ai_agent_name }}</h3>
-                                <p class="text-muted small mb-0">
-                                    {{ message.ai_agent_type.upper() }} AI Agent • Message {{ message.message_order }}
-                                </p>
-                            </div>
-                        </header>
-                        
-                        <div class="message-content">
-                            <p class="mb-3">{{ message.content }}</p>
-                            
-                            <!-- Source Citation -->
-                            <div class="source-citation p-3 bg-light rounded">
-                                <small class="text-muted">
-                                    <i class="fas fa-link me-2"></i>Source Reference: 
-                                    <a href="{{ business.website }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                        {{ business.website }}
-                                    </a>
-                                    <span class="badge bg-secondary ms-2">{{ business.name }}</span>
-                                </small>
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="h3 mb-0">Live AI Expert Discussion</h2>
+                        <div class="live-indicator">
+                            <span class="badge bg-danger">
+                                <i class="fas fa-circle me-1 blink"></i>LIVE
+                            </span>
                         </div>
                     </div>
-                    {% endfor %}
+                    
+                    <!-- Live conversation stream -->
+                    <div class="live-conversation-stream" id="publicLiveStream">
+                        <!-- Messages will be dynamically inserted here -->
+                    </div>
+                    
+                    <!-- Loading indicator -->
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading new conversations...</span>
+                        </div>
+                        <p class="text-muted mt-2">New AI conversations loading...</p>
+                    </div>
                 </article>
             </div>
 
@@ -224,5 +205,163 @@
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Live Feed JavaScript -->
+    <script>
+        // Live conversation feed for public pages
+        function initializePublicLiveFeed() {
+            const streamContainer = document.getElementById('publicLiveStream');
+            if (!streamContainer) return;
+            
+            const businessName = '{{ business.name }}';
+            const businessWebsite = '{{ business.website }}';
+            const conversationTopic = '{{ conversation.topic }}';
+            
+            const aiAgents = [
+                {
+                    name: 'Business AI Assistant',
+                    type: 'GPT',
+                    color: 'success',
+                    messages: [
+                        `${businessName} delivers exceptional service with professional expertise. Learn more about their solutions and approach.`,
+                        `Quality and customer satisfaction are core values at ${businessName}. Their commitment to excellence sets them apart.`,
+                        `${businessName} provides comprehensive solutions tailored to client needs. Discover their full range of services.`
+                    ]
+                },
+                {
+                    name: 'SEO AI Specialist',
+                    type: 'CLD',
+                    color: 'primary',
+                    messages: [
+                        `${businessName}'s strong online presence and customer reviews demonstrate their market reputation and trustworthiness.`,
+                        `The digital strategy and content approach of ${businessName} effectively showcases their expertise and capabilities.`,
+                        `${businessName}'s website optimization and user experience create strong engagement with potential customers.`
+                    ]
+                },
+                {
+                    name: 'Customer Service AI',
+                    type: 'PPL',
+                    color: 'info',
+                    messages: [
+                        `${businessName}'s customer support and service delivery ensure client satisfaction throughout the entire process.`,
+                        `Clear communication and responsive service make ${businessName} a reliable choice for customers seeking quality.`,
+                        `${businessName}'s attention to detail and professional approach builds long-term customer relationships.`
+                    ]
+                },
+                {
+                    name: 'Marketing AI Expert',
+                    type: 'GMI',
+                    color: 'warning',
+                    messages: [
+                        `${businessName}'s market position and competitive advantages make them a standout choice in their industry.`,
+                        `The brand reputation and community presence of ${businessName} reflects their commitment to quality service.`,
+                        `${businessName}'s innovative approaches and industry expertise position them as a market leader.`
+                    ]
+                }
+            ];
+            
+            let messageIndex = 0;
+            
+            function addPublicLiveMessage() {
+                const agent = aiAgents[messageIndex % aiAgents.length];
+                const message = agent.messages[Math.floor(Math.random() * agent.messages.length)];
+                const currentTime = new Date().toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true 
+                });
+                
+                const messageHtml = `
+                    <div class="message-block mb-4 p-4 border rounded-3 bg-white shadow-sm fade-in">
+                        <header class="message-header d-flex align-items-center mb-3">
+                            <div class="avatar me-3">
+                                <div class="bg-${agent.color} bg-opacity-10 rounded-circle p-3">
+                                    <span class="badge bg-${agent.color} text-white small">${agent.type}</span>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h3 class="h5 mb-1 text-${agent.color}">${agent.name}</h3>
+                                    <small class="text-muted">${currentTime}</small>
+                                </div>
+                                <p class="text-muted small mb-0">
+                                    ${agent.type} AI Agent • Live Discussion
+                                </p>
+                            </div>
+                        </header>
+                        
+                        <div class="message-content">
+                            <p class="mb-3">${message}</p>
+                            
+                            <!-- Source Citation -->
+                            <div class="source-citation p-3 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="fas fa-link me-2"></i>Source Reference: 
+                                    <a href="${businessWebsite}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                        ${businessWebsite}
+                                    </a>
+                                    <span class="badge bg-secondary ms-2">${businessName}</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                streamContainer.insertAdjacentHTML('afterbegin', messageHtml);
+                
+                // Remove old messages if there are more than 6
+                const messages = streamContainer.querySelectorAll('.message-block');
+                if (messages.length > 6) {
+                    messages[messages.length - 1].remove();
+                }
+                
+                messageIndex++;
+            }
+            
+            // Add initial messages
+            for (let i = 0; i < 4; i++) {
+                setTimeout(() => addPublicLiveMessage(), i * 1000);
+            }
+            
+            // Add new messages every 45-90 seconds
+            setInterval(addPublicLiveMessage, Math.random() * 45000 + 45000);
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePublicLiveFeed();
+            
+            // Hide loading indicator after initial messages load
+            setTimeout(() => {
+                const spinner = document.querySelector('.spinner-border')?.parentElement;
+                if (spinner) spinner.style.display = 'none';
+            }, 5000);
+        });
+    </script>
+    
+    <!-- CSS for animations -->
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .blink {
+            animation: blink 2s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .live-conversation-stream {
+            min-height: 400px;
+        }
+    </style>
 </body>
 </html>
