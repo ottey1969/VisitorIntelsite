@@ -589,9 +589,11 @@ function initializePublicLiveFeed() {
     function addPublicLiveMessage() {
         const agent = aiAgents[messageIndex % aiAgents.length];
         const message = agent.messages[Math.floor(Math.random() * agent.messages.length)];
-        // Generate real-time current timestamps that advance forward
+        // Generate staggered timestamps (each message 2-3 minutes apart)
         const now = new Date();
-        const currentTime = now.toLocaleTimeString([], { 
+        const minutesToSubtract = messageIndex * 2; // 2 minutes between each message
+        const messageTime = new Date(now.getTime() - (minutesToSubtract * 60000));
+        const currentTime = messageTime.toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit',
             hour12: true 
@@ -608,7 +610,7 @@ function initializePublicLiveFeed() {
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="h5 mb-1 text-${agent.color}">${agent.name}</h3>
-                            <small class="text-muted timestamp" data-timestamp="${now.getTime()}">${currentTime}</small>
+                            <small class="text-muted timestamp" data-timestamp="${messageTime.getTime()}">${currentTime}</small>
                         </div>
                         <p class="text-muted small mb-0">
                             ${agent.type} AI Agent • Live Discussion
@@ -656,17 +658,17 @@ function initializePublicLiveFeed() {
 // Function to update all timestamps in real-time
 function updateTimestamps() {
     const timestamps = document.querySelectorAll('.timestamp');
-    timestamps.forEach(timestamp => {
+    timestamps.forEach((timestamp, index) => {
         const originalTime = parseInt(timestamp.dataset.timestamp);
         if (!originalTime) return;
         
         // Calculate elapsed time since message was created
         const now = Date.now();
-        const elapsed = Math.floor((now - originalTime) / 60000); // minutes elapsed
+        const elapsedMinutes = Math.floor((now - originalTime) / 60000);
         
-        // Generate new current time
-        const newTime = new Date();
-        const newTimeString = newTime.toLocaleTimeString([], { 
+        // Update to show progressive time advancement (original time + 1 minute each update)
+        const updatedTime = new Date(originalTime + (elapsedMinutes * 60000));
+        const newTimeString = updatedTime.toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit',
             hour12: true 
