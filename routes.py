@@ -3,6 +3,7 @@ from app import app, db
 from models import Business, Conversation, ConversationMessage, CreditPackage, Purchase
 from ai_conversation import AIConversationManager
 from payment_handler import PaymentHandler
+from content_ecosystem import ContentEcosystemManager
 from datetime import datetime
 import uuid
 import logging
@@ -282,11 +283,18 @@ def purchase_credits():
             # Update purchase and business credits
             purchase.status = 'completed'
             purchase.payment_id = payment_result['payment_id']
-            business.credits_remaining += package.credits
+            
+            # Handle Enterprise plan differently
+            if package.name == 'Enterprise Unlimited':
+                business.plan_type = 'enterprise'
+                business.is_unlimited = True
+                business.credits_remaining = -1  # Unlimited
+                flash(f'Welcome to Enterprise! You now have unlimited conversations and complete content ecosystem access.', 'success')
+            else:
+                business.credits_remaining += package.credits
+                flash(f'Successfully purchased {package.credits} credits for ${package.price}!', 'success')
             
             db.session.commit()
-            
-            flash(f'Successfully purchased {package.credits} credits for ${package.price}!', 'success')
         else:
             purchase.status = 'failed'
             db.session.commit()
@@ -549,6 +557,153 @@ def test_page_discovery(business_id):
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
         })
+
+# Enterprise Content Ecosystem Routes
+@app.route('/business/<business_name>/faq/')
+@app.route('/business/<business_name>/faq/<faq_slug>')
+def business_faq(business_name, faq_slug=None):
+    """Business FAQ pages"""
+    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    if not business or business.plan_type != 'enterprise':
+        return redirect(url_for('index'))
+    
+    ecosystem_manager = ContentEcosystemManager()
+    ecosystem = ecosystem_manager.generate_business_ecosystem(business)
+    
+    if faq_slug:
+        # Show specific FAQ page
+        faq_page = next((faq for faq in ecosystem['faq_pages'] if faq['slug'] == faq_slug), None)
+        if not faq_page:
+            return redirect(url_for('business_faq', business_name=business_name))
+        
+        return render_template('business_content.html', 
+                             business=business, 
+                             page_type='faq',
+                             content_page=faq_page,
+                             all_pages=ecosystem['faq_pages'])
+    else:
+        # Show FAQ index
+        return render_template('business_content_index.html',
+                             business=business,
+                             page_type='faq',
+                             pages=ecosystem['faq_pages'])
+
+@app.route('/business/<business_name>/local/')
+@app.route('/business/<business_name>/local/<location_slug>')
+def business_local(business_name, location_slug=None):
+    """Business local SEO pages"""
+    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    if not business or business.plan_type != 'enterprise':
+        return redirect(url_for('index'))
+    
+    ecosystem_manager = ContentEcosystemManager()
+    ecosystem = ecosystem_manager.generate_business_ecosystem(business)
+    
+    if location_slug:
+        # Show specific local page
+        local_page = next((page for page in ecosystem['local_pages'] if page['slug'] == location_slug), None)
+        if not local_page:
+            return redirect(url_for('business_local', business_name=business_name))
+        
+        return render_template('business_content.html',
+                             business=business,
+                             page_type='local',
+                             content_page=local_page,
+                             all_pages=ecosystem['local_pages'])
+    else:
+        # Show local index
+        return render_template('business_content_index.html',
+                             business=business,
+                             page_type='local',
+                             pages=ecosystem['local_pages'])
+
+@app.route('/business/<business_name>/voice-search/')
+@app.route('/business/<business_name>/voice-search/<voice_slug>')
+def business_voice_search(business_name, voice_slug=None):
+    """Business voice search optimized pages"""
+    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    if not business or business.plan_type != 'enterprise':
+        return redirect(url_for('index'))
+    
+    ecosystem_manager = ContentEcosystemManager()
+    ecosystem = ecosystem_manager.generate_business_ecosystem(business)
+    
+    if voice_slug:
+        # Show specific voice search page
+        voice_page = next((page for page in ecosystem['voice_search'] if page['slug'] == voice_slug), None)
+        if not voice_page:
+            return redirect(url_for('business_voice_search', business_name=business_name))
+        
+        return render_template('business_content.html',
+                             business=business,
+                             page_type='voice-search',
+                             content_page=voice_page,
+                             all_pages=ecosystem['voice_search'])
+    else:
+        # Show voice search index
+        return render_template('business_content_index.html',
+                             business=business,
+                             page_type='voice-search',
+                             pages=ecosystem['voice_search'])
+
+@app.route('/business/<business_name>/knowledge-base/')
+@app.route('/business/<business_name>/knowledge-base/<knowledge_slug>')
+def business_knowledge_base(business_name, knowledge_slug=None):
+    """Business knowledge base pages"""
+    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    if not business or business.plan_type != 'enterprise':
+        return redirect(url_for('index'))
+    
+    ecosystem_manager = ContentEcosystemManager()
+    ecosystem = ecosystem_manager.generate_business_ecosystem(business)
+    
+    if knowledge_slug:
+        # Show specific knowledge page
+        knowledge_page = next((page for page in ecosystem['knowledge_base'] if page['slug'] == knowledge_slug), None)
+        if not knowledge_page:
+            return redirect(url_for('business_knowledge_base', business_name=business_name))
+        
+        return render_template('business_content.html',
+                             business=business,
+                             page_type='knowledge-base',
+                             content_page=knowledge_page,
+                             all_pages=ecosystem['knowledge_base'])
+    else:
+        # Show knowledge base index
+        return render_template('business_content_index.html',
+                             business=business,
+                             page_type='knowledge-base',
+                             pages=ecosystem['knowledge_base'])
+
+@app.route('/business/<business_name>/live-conversation/')
+def business_live_conversation(business_name):
+    """Business live conversation feed"""
+    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    if not business or business.plan_type != 'enterprise':
+        return redirect(url_for('index'))
+    
+    # Get the business's main conversation
+    conversation = Conversation.query.filter_by(business_id=business.id).first()
+    if not conversation:
+        return redirect(url_for('index'))
+    
+    return render_template('business_live_conversation.html',
+                         business=business,
+                         conversation=conversation)
+
+@app.route('/business/<business_name>/')
+def business_ecosystem_home(business_name):
+    """Business ecosystem homepage"""
+    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    if not business or business.plan_type != 'enterprise':
+        return redirect(url_for('index'))
+    
+    ecosystem_manager = ContentEcosystemManager()
+    ecosystem = ecosystem_manager.generate_business_ecosystem(business)
+    
+    return render_template('business_ecosystem_home.html',
+                         business=business,
+                         ecosystem=ecosystem)
 
 @app.errorhandler(404)
 def not_found_error(error):

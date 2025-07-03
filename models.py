@@ -15,6 +15,8 @@ class Business(db.Model):
     credits_remaining = db.Column(Integer, default=0)
     created_at = db.Column(DateTime, default=datetime.utcnow)
     share_url = db.Column(String(500))
+    plan_type = db.Column(String(50), default='basic')  # basic, enterprise
+    custom_domain = db.Column(String(200))  # For enterprise customers
     
     # Relationship to conversations
     conversations = db.relationship('Conversation', backref='business', lazy=True)
