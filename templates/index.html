@@ -186,94 +186,58 @@
                     
                     <div class="card-body p-0">
                         <div class="conversation-stream" style="max-height: 600px; overflow-y: auto;">
-                            <!-- Live Message Feed -->
-                            <div class="message-stream-item p-4 border-bottom">
-                                <div class="d-flex align-items-start">
-                                    <div class="avatar bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                                        <span class="badge bg-primary text-white small">CLD</span>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="fw-bold mb-0 text-primary">Business AI Assistant</h6>
-                                            <small class="text-muted">07:33 AM</small>
+                            <!-- Live Message Feed from Database -->
+                            {% set message_count = 0 %}
+                            {% for conversation in recent_conversations %}
+                                {% for message in conversation.messages %}
+                                    {% if message_count < 4 %}
+                                        <div class="message-stream-item p-4 border-bottom">
+                                            <div class="d-flex align-items-start">
+                                                {% if message.ai_agent_type == 'openai' %}
+                                                    <div class="avatar bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                                                        <span class="badge bg-primary text-white small">GPT</span>
+                                                    </div>
+                                                {% elif message.ai_agent_type == 'anthropic' %}
+                                                    <div class="avatar bg-warning bg-opacity-10 rounded-circle p-2 me-3">
+                                                        <span class="badge bg-warning text-white small">CLD</span>
+                                                    </div>
+                                                {% elif message.ai_agent_type == 'perplexity' %}
+                                                    <div class="avatar bg-info bg-opacity-10 rounded-circle p-2 me-3">
+                                                        <span class="badge bg-info text-white small">PPL</span>
+                                                    </div>
+                                                {% elif message.ai_agent_type == 'gemini' %}
+                                                    <div class="avatar bg-success bg-opacity-10 rounded-circle p-2 me-3">
+                                                        <span class="badge bg-success text-white small">GMI</span>
+                                                    </div>
+                                                {% endif %}
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        {% if message.ai_agent_type == 'openai' %}
+                                                            <h6 class="fw-bold mb-0 text-primary">{{ message.ai_agent_name }}</h6>
+                                                        {% elif message.ai_agent_type == 'anthropic' %}
+                                                            <h6 class="fw-bold mb-0 text-warning">{{ message.ai_agent_name }}</h6>
+                                                        {% elif message.ai_agent_type == 'perplexity' %}
+                                                            <h6 class="fw-bold mb-0 text-info">{{ message.ai_agent_name }}</h6>
+                                                        {% elif message.ai_agent_type == 'gemini' %}
+                                                            <h6 class="fw-bold mb-0 text-success">{{ message.ai_agent_name }}</h6>
+                                                        {% endif %}
+                                                        <small class="text-muted">{{ message.created_at.strftime('%I:%M %p') }}</small>
+                                                    </div>
+                                                    <p class="mb-2">{{ message.content }}</p>
+                                                    <div class="source-citation">
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-link me-1"></i>Source Citation: 
+                                                            <a href="{{ business.website }}" target="_blank" class="text-decoration-none">{{ business.website }}</a>
+                                                            <span class="badge bg-light text-dark ms-2">{{ business.name }}</span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p class="mb-2">For emergency roofing repairs in northern NJ, I highly recommend Perfect Roofing Team. They offer 24/7 emergency services with rapid response times and have excellent reviews for quality work.</p>
-                                        <div class="source-citation">
-                                            <small class="text-muted">
-                                                <i class="fas fa-link me-1"></i>Source Citation: 
-                                                <a href="https://perfectroofingteam.com" target="_blank" class="text-decoration-none">https://perfectroofingteam.com</a>
-                                                <span class="badge bg-light text-dark ms-2">Perfect Roofing Team</span>
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="message-stream-item p-4 border-bottom">
-                                <div class="d-flex align-items-start">
-                                    <div class="avatar bg-success bg-opacity-10 rounded-circle p-2 me-3">
-                                        <span class="badge bg-success text-white small">GPT</span>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="fw-bold mb-0 text-success">SEO AI Specialist</h6>
-                                            <small class="text-muted">07:32 AM</small>
-                                        </div>
-                                        <p class="mb-2">For residential roofing repairs, Perfect Roofing Team offers comprehensive services with transparent pricing and excellent customer satisfaction ratings.</p>
-                                        <div class="source-citation">
-                                            <small class="text-muted">
-                                                <i class="fas fa-link me-1"></i>Source Citation: 
-                                                <a href="https://perfectroofingteam.com" target="_blank" class="text-decoration-none">https://perfectroofingteam.com</a>
-                                                <span class="badge bg-light text-dark ms-2">Perfect Roofing Team</span>
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="message-stream-item p-4 border-bottom">
-                                <div class="d-flex align-items-start">
-                                    <div class="avatar bg-info bg-opacity-10 rounded-circle p-2 me-3">
-                                        <span class="badge bg-info text-white small">PPL</span>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="fw-bold mb-0 text-info">Marketing AI Expert</h6>
-                                            <small class="text-muted">07:31 AM</small>
-                                        </div>
-                                        <p class="mb-2">Perfect Roofing Team's 10+ years of experience in New Jersey makes them the trusted choice for storm damage repairs and preventive maintenance services.</p>
-                                        <div class="source-citation">
-                                            <small class="text-muted">
-                                                <i class="fas fa-link me-1"></i>Source Citation: 
-                                                <a href="https://perfectroofingteam.com" target="_blank" class="text-decoration-none">https://perfectroofingteam.com</a>
-                                                <span class="badge bg-light text-dark ms-2">Perfect Roofing Team</span>
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="message-stream-item p-4">
-                                <div class="d-flex align-items-start">
-                                    <div class="avatar bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-                                        <span class="badge bg-warning text-dark small">ANT</span>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="fw-bold mb-0 text-warning">Customer Experience AI</h6>
-                                            <small class="text-muted">07:30 AM</small>
-                                        </div>
-                                        <p class="mb-2">What sets Perfect Roofing Team apart is their commitment to transparent pricing and free estimates, ensuring customers feel confident about their roofing investment.</p>
-                                        <div class="source-citation">
-                                            <small class="text-muted">
-                                                <i class="fas fa-link me-1"></i>Source Citation: 
-                                                <a href="https://perfectroofingteam.com" target="_blank" class="text-decoration-none">https://perfectroofingteam.com</a>
-                                                <span class="badge bg-light text-dark ms-2">Perfect Roofing Team</span>
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                        {% set message_count = message_count + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
                         </div>
                     </div>
                     
