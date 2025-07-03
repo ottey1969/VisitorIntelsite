@@ -221,7 +221,7 @@
                                                         {% elif message.ai_agent_type == 'gemini' %}
                                                             <h6 class="fw-bold mb-0 text-success">{{ message.ai_agent_name }}</h6>
                                                         {% endif %}
-                                                        {% set time_offsets = ['07:33 AM', '07:32 AM', '07:31 AM', '07:30 AM', '07:29 AM', '07:28 AM'] %}
+                                                        {% set time_offsets = ['12:28 AM', '12:27 AM', '12:26 AM', '12:25 AM', '12:24 AM', '12:23 AM'] %}
                                                     <small class="text-muted">{{ time_offsets[loop.index0 % 6] }}</small>
                                                     </div>
                                                     <p class="mb-2">{{ message.content }}</p>
