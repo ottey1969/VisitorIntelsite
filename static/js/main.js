@@ -352,11 +352,11 @@ function updateTimestampsToCurrentTime() {
     
     timestamps.forEach((timestamp) => {
         const offset = parseInt(timestamp.getAttribute('data-offset')) || 0;
-        // Create timestamps going backwards from current time
-        const offsetMinutes = offset * 1; // 1 minute apart
-        const messageTime = new Date(now.getTime() - (offsetMinutes * 60000));
+        // Create timestamps going backwards from current time in 45-second intervals
+        const offsetSeconds = offset * 45; // 45 seconds apart
+        const messageTime = new Date(now.getTime() - (offsetSeconds * 1000));
         
-        const timeString = messageTime.toLocaleTimeString('en-US', {
+        const timeString = messageTime.toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true
