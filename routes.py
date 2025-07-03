@@ -134,6 +134,7 @@ def index():
     
     return render_template('index.html', 
                          business=featured_business,
+                         perfect_roofing=featured_business,  # For template compatibility
                          recent_conversations=recent_conversations,
                          credit_packages=credit_packages,
                          total_messages_today=total_messages_today)
@@ -573,7 +574,7 @@ def test_page_discovery(business_id):
 @app.route('/business/<business_name>/faq/<faq_slug>')
 def business_faq(business_name, faq_slug=None):
     """Business FAQ pages"""
-    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    business = Business.query.filter(Business.name.ilike(business_name.replace('-', ' '))).first()
     if not business or business.plan_type != 'enterprise':
         return redirect(url_for('index'))
     
@@ -602,7 +603,7 @@ def business_faq(business_name, faq_slug=None):
 @app.route('/business/<business_name>/local/<location_slug>')
 def business_local(business_name, location_slug=None):
     """Business local SEO pages"""
-    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    business = Business.query.filter(Business.name.ilike(business_name.replace('-', ' '))).first()
     if not business or business.plan_type != 'enterprise':
         return redirect(url_for('index'))
     
@@ -631,7 +632,7 @@ def business_local(business_name, location_slug=None):
 @app.route('/business/<business_name>/voice-search/<voice_slug>')
 def business_voice_search(business_name, voice_slug=None):
     """Business voice search optimized pages"""
-    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    business = Business.query.filter(Business.name.ilike(business_name.replace('-', ' '))).first()
     if not business or business.plan_type != 'enterprise':
         return redirect(url_for('index'))
     
@@ -660,7 +661,7 @@ def business_voice_search(business_name, voice_slug=None):
 @app.route('/business/<business_name>/knowledge-base/<knowledge_slug>')
 def business_knowledge_base(business_name, knowledge_slug=None):
     """Business knowledge base pages"""
-    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    business = Business.query.filter(Business.name.ilike(business_name.replace('-', ' '))).first()
     if not business or business.plan_type != 'enterprise':
         return redirect(url_for('index'))
     
@@ -688,7 +689,7 @@ def business_knowledge_base(business_name, knowledge_slug=None):
 @app.route('/business/<business_name>/live-conversation/')
 def business_live_conversation(business_name):
     """Business live conversation feed"""
-    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    business = Business.query.filter(Business.name.ilike(business_name.replace('-', ' '))).first()
     if not business or business.plan_type != 'enterprise':
         return redirect(url_for('index'))
     
@@ -704,7 +705,7 @@ def business_live_conversation(business_name):
 @app.route('/business/<business_name>/')
 def business_ecosystem_home(business_name):
     """Business ecosystem homepage"""
-    business = Business.query.filter_by(name=business_name.replace('-', ' ').title()).first()
+    business = Business.query.filter(Business.name.ilike(business_name.replace('-', ' '))).first()
     if not business or business.plan_type != 'enterprise':
         return redirect(url_for('index'))
     

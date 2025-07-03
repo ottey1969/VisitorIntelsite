@@ -62,7 +62,15 @@
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading conversation...</span>
                             </div>
-                            <p class="mt-2 text-muted">Starting live AI conversation...</p>
+                            <p class="mt-2 text-muted">Loading new AI conversation...</p>
+                            <small class="text-muted">Next message loading in <span id="loadingTimer">45-90</span> seconds</small>
+                        </div>
+                        
+                        <!-- See All Conversations Button -->
+                        <div class="text-center mt-4">
+                            <a href="{{ url_for('business_dashboard', business_id=business.id) }}" class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-list me-2"></i>See All Conversations
+                            </a>
                         </div>
                     </div>
                 </div>

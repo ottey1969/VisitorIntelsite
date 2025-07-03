@@ -216,6 +216,7 @@
             const businessName = '{{ business.name }}';
             const businessWebsite = '{{ business.website }}';
             const conversationTopic = '{{ conversation.topic }}';
+            const conversationDate = new Date('{{ conversation.created_at.isoformat() }}');
             
             const aiAgents = [
                 {
@@ -261,7 +262,10 @@
             function addPublicLiveMessage() {
                 const agent = aiAgents[messageIndex % aiAgents.length];
                 const message = agent.messages[Math.floor(Math.random() * agent.messages.length)];
-                const currentTime = new Date().toLocaleTimeString('en-US', { 
+                // Generate static times based on conversation creation time + message offset
+                const messageOffset = messageIndex * 3; // 3 minutes between messages
+                const messageTime = new Date(conversationDate.getTime() + (messageOffset * 60000));
+                const currentTime = messageTime.toLocaleTimeString('en-US', { 
                     hour: '2-digit', 
                     minute: '2-digit',
                     hour12: true 

@@ -38,11 +38,11 @@
             
             <div class="col-lg-6 text-center">
                 <div class="position-relative">
-                    <img src="https://pixabay.com/get/g7383953bac4dc2e4e88a9609a93086b97872e56b0ce4ba46bce280fc13d5be030351dbfe4d34262ce406ecaeb1b1daa987299894637dcb2e66c21498f580d411_1280.jpg" 
-                         alt="AI conversation interface" class="img-fluid rounded-4 shadow-lg">
+                    <img src="{{ url_for('static', filename='images/ai-bots-conversation.jpg') }}" 
+                         alt="AI agents having business conversations" class="img-fluid rounded-4 shadow-lg">
                     <div class="live-indicator position-absolute top-0 end-0 m-3">
-                        <span class="badge bg-danger fs-6">
-                            <i class="fas fa-circle me-1 pulse"></i>LIVE
+                        <span class="badge bg-danger fs-6 pulse-live">
+                            <i class="fas fa-circle me-1 blink-animation"></i>LIVE
                         </span>
                     </div>
                 </div>
@@ -352,7 +352,13 @@
                         <h5 class="fw-bold mb-3">{{ package.name }}</h5>
                         <div class="price-display mb-4">
                             <span class="h2 fw-bold text-primary">${{ "%.0f"|format(package.price) }}</span>
-                            <div class="text-muted small">{{ package.credits }} Credits</div>
+                            <div class="text-muted small">
+                                {% if package.credits == -1 %}
+                                    Unlimited Credits
+                                {% else %}
+                                    {{ package.credits }} Credits
+                                {% endif %}
+                            </div>
                         </div>
                         
                         <p class="text-muted mb-4">{{ package.description }}</p>
@@ -360,11 +366,19 @@
                         <ul class="list-unstyled text-start mb-4">
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                {{ package.credits }} AI conversations
+                                {% if package.credits == -1 %}
+                                    Unlimited AI conversations
+                                {% else %}
+                                    {{ package.credits }} AI conversations
+                                {% endif %}
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                {{ package.credits * 16 }} total messages
+                                {% if package.credits == -1 %}
+                                    Unlimited total messages
+                                {% else %}
+                                    {{ package.credits * 16 }} total messages
+                                {% endif %}
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
@@ -377,7 +391,11 @@
                         </ul>
                         
                         <div class="pricing-math text-muted small mb-4">
-                            <strong>${{ "%.2f"|format(package.price / package.credits) }}</strong> per conversation
+                            {% if package.credits == -1 %}
+                                <strong>${{ "%.2f"|format(package.price) }}</strong> per month
+                            {% else %}
+                                <strong>${{ "%.2f"|format(package.price / package.credits) }}</strong> per conversation
+                            {% endif %}
                         </div>
                     </div>
                     
