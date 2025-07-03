@@ -58,6 +58,19 @@ def index():
         business_id=featured_business.id
     ).order_by(Conversation.created_at.desc()).limit(3).all()
     
+    # Randomize messages for authentic live feed display
+    import random
+    all_display_messages = []
+    for conversation in recent_conversations:
+        for message in conversation.messages:
+            all_display_messages.append((message, conversation))
+    
+    # Shuffle all messages for random agent appearance
+    random.shuffle(all_display_messages)
+    
+    # Take only first 16 messages for live feed
+    display_messages = all_display_messages[:16]
+    
     # If no conversations exist, create sample ones
     if not recent_conversations:
         sample_conversations = [
@@ -143,6 +156,7 @@ def index():
                          business=featured_business,
                          perfect_roofing=featured_business,  # For template compatibility
                          recent_conversations=recent_conversations,
+                         display_messages=display_messages,
                          credit_packages=credit_packages,
                          total_messages_today=total_messages_today)
 
