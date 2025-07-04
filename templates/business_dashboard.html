@@ -482,6 +482,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard_controls.js') }}"></script>
 <script>
 function copyShareUrl() {
     const url = '{{ business.share_url or "" }}';

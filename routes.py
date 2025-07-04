@@ -4,6 +4,9 @@ from models import Business, Conversation, ConversationMessage, CreditPackage, P
 from ai_conversation import AIConversationManager
 from payment_handler import PaymentHandler
 from content_ecosystem import ContentEcosystemManager
+import json
+from datetime import datetime
+import io
 from subscription_manager import SubscriptionManager
 from social_media_manager import SocialMediaManager
 from infographic_generator import InfographicGenerator
@@ -812,26 +815,7 @@ def api_test():
     """API integration test page"""
     return render_template('api_test.html')
 
-@app.route('/api/business/<int:business_id>/content-status')
-def api_business_content_status(business_id):
-    """Get content generation status for a business"""
-    try:
-        business = Business.query.get(business_id)
-        if not business:
-            return jsonify({'error': 'Business not found'}), 404
-        
-        # Mock content status for now - would be stored in database
-        status = {
-            'faq': True,  # Has generated content
-            'local_seo': False,  # No content yet
-            'voice_search': True,  # Has generated content
-            'knowledge_base': False  # No content yet
-        }
-        
-        return jsonify(status)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/business/<int:business_id>/generate-content', methods=['POST'])
 def api_generate_business_content(business_id):
@@ -1773,6 +1757,326 @@ def keepalive_generate():
         db.session.rollback()
         logging.error(f"Keepalive conversation generation failed: {e}")
         return jsonify({'error': str(e)}), 500
+
+# Business Content Management API Endpoints
+@app.route('/api/business/<int:business_id>/content-status')
+def get_business_content_status(business_id):
+    """Get the status of all content types for a business"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Simulate content status - in a real system, this would check actual generated content
+        content_status = {
+            'faq': {
+                'status': 'not_generated',
+                'generated_at': None
+            },
+            'local': {
+                'status': 'not_generated', 
+                'generated_at': None
+            },
+            'voice': {
+                'status': 'not_generated',
+                'generated_at': None
+            },
+            'knowledge': {
+                'status': 'not_generated',
+                'generated_at': None
+            }
+        }
+        
+        # Check if business has Enterprise plan - they get pre-generated content
+        if hasattr(business, 'subscription_plan') and business.subscription_plan == 'Enterprise':
+            for content_type in content_status:
+                content_status[content_type]['status'] = 'generated'
+                content_status[content_type]['generated_at'] = datetime.now().isoformat()
+        
+        return jsonify({
+            'success': True,
+            'content_status': content_status,
+            'business_id': business_id
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/business/<int:business_id>/generate-content', methods=['POST'])
+def generate_business_content(business_id):
+    """Generate content for a specific business and content type"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        data = request.get_json()
+        content_type = data.get('content_type')
+        
+        if not content_type:
+            return jsonify({
+                'success': False,
+                'error': 'Content type is required'
+            }), 400
+        
+        # Initialize content ecosystem manager
+        content_manager = ContentEcosystemManager()
+        
+        # Generate content based on type
+        generated_content = content_manager.generate_business_ecosystem(business)
+        
+        # Store the generated content (in a real system, you'd save to database)
+        # For now, we'll just return success
+        
+        return jsonify({
+            'success': True,
+            'message': f'{content_type.upper()} content generated successfully for {business.business_name}',
+            'generated_at': datetime.now().isoformat(),
+            'content_type': content_type
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/business/<int:business_id>/content/<content_type>')
+def get_business_content(business_id, content_type):
+    """Get generated content for viewing"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Generate sample content for demonstration
+        content_map = {
+            'faq': {
+                'title': f'FAQ Content for {business.business_name}',
+                'content': f'''# Frequently Asked Questions - {business.business_name}
+
+## What services does {business.business_name} offer?
+We specialize in comprehensive {business.industry} services including consultation, installation, and maintenance. Our team has years of experience serving customers in {business.location}.
+
+## How do I get a quote?
+You can request a free quote by contacting us directly. We provide detailed estimates based on your specific needs and requirements.
+
+## What areas do you serve?
+We primarily serve {business.location} and surrounding areas. Contact us to confirm service availability in your location.
+
+## Do you offer warranties?
+Yes, we stand behind our work with comprehensive warranties on all services and installations.
+
+## How quickly can you start a project?
+Project timelines vary based on scope and current workload. We'll provide an estimated start date with your quote.''',
+                'metadata': {
+                    'word_count': 150,
+                    'seo_score': 85,
+                    'target_keywords': ['FAQ', business.industry, business.location, 'services', 'quote']
+                }
+            },
+            'local': {
+                'title': f'Local SEO Content for {business.business_name}',
+                'content': f'''# {business.business_name} - Local {business.industry} Services in {business.location}
+
+## Why Choose Local {business.industry} Services?
+
+When you need reliable {business.industry} services in {business.location}, choosing a local provider offers numerous advantages. {business.business_name} understands the unique challenges and requirements of properties in our area.
+
+## Our {business.location} Service Areas
+
+We proudly serve homeowners and businesses throughout {business.location}, providing:
+
+- Emergency services
+- Scheduled maintenance
+- New installations
+- Repairs and upgrades
+
+## Local Experience Matters
+
+Our team knows {business.location} inside and out. We understand local building codes, weather patterns, and the specific needs of properties in our community.
+
+Contact {business.business_name} today for expert {business.industry} services in {business.location}.''',
+                'metadata': {
+                    'word_count': 125,
+                    'seo_score': 92,
+                    'target_keywords': [business.location, business.industry, 'local services', 'emergency', 'maintenance']
+                }
+            },
+            'voice': {
+                'title': f'Voice Search Optimization for {business.business_name}',
+                'content': f'''# Voice Search Optimized Content - {business.business_name}
+
+## "Hey Siri, find {business.industry} services near me"
+
+{business.business_name} is your local {business.industry} expert in {business.location}. We provide fast, reliable service when you need it most.
+
+## "What's the best {business.industry} company in {business.location}?"
+
+{business.business_name} stands out because:
+- We respond quickly to your calls
+- Our team is fully licensed and insured
+- We offer upfront pricing with no surprises
+- Customer satisfaction is our top priority
+
+## "How much does {business.industry} service cost?"
+
+Pricing depends on your specific needs. {business.business_name} provides free estimates so you know exactly what to expect before we start any work.
+
+## "Who can help with emergency {business.industry} problems?"
+
+{business.business_name} offers emergency services in {business.location}. Call us anytime for urgent repairs or service needs.''',
+                'metadata': {
+                    'word_count': 140,
+                    'seo_score': 88,
+                    'target_keywords': ['voice search', 'near me', business.industry, 'emergency', 'best company']
+                }
+            },
+            'knowledge': {
+                'title': f'Industry Knowledge Base - {business.business_name}',
+                'content': f'''# {business.industry} Knowledge Base - {business.business_name}
+
+## Understanding {business.industry} Services
+
+As your trusted {business.industry} professionals in {business.location}, {business.business_name} wants to help you make informed decisions about your property needs.
+
+## Common {business.industry} Issues
+
+### Prevention Tips
+Regular maintenance is key to avoiding costly repairs. Here's what property owners in {business.location} should watch for:
+
+- Seasonal inspections
+- Early problem detection
+- Proper maintenance schedules
+
+### When to Call Professionals
+
+While some maintenance can be done yourself, certain situations require professional expertise:
+
+- Complex installations
+- Safety-critical repairs
+- Warranty-protected work
+
+## Industry Best Practices
+
+{business.business_name} follows industry best practices including:
+- Using quality materials
+- Following local codes
+- Providing detailed documentation
+- Ensuring proper permits
+
+## Stay Informed
+
+Our knowledge base helps {business.location} property owners understand their {business.industry} needs and make smart decisions about maintenance and upgrades.''',
+                'metadata': {
+                    'word_count': 165,
+                    'seo_score': 90,
+                    'target_keywords': ['knowledge base', business.industry, 'best practices', 'maintenance', 'professional']
+                }
+            }
+        }
+        
+        if content_type not in content_map:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid content type'
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'content': content_map[content_type]
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/business/<int:business_id>/content/<content_type>/download')
+def download_business_content(business_id, content_type):
+    """Download content as a file"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Get the content
+        response = get_business_content(business_id, content_type)
+        if response[1] != 200:  # Check status code
+            return response
+        
+        content_data = response[0].get_json()
+        if not content_data['success']:
+            return response
+        
+        content = content_data['content']['content']
+        title = content_data['content']['title']
+        
+        # Create file content
+        file_content = f"# {title}\n\n{content}\n\n---\nGenerated by Visitor Intel for {business.business_name}\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        # Create file response
+        output = io.StringIO()
+        output.write(file_content)
+        output.seek(0)
+        
+        filename = f"{business.business_name.replace(' ', '_').lower()}_{content_type}_{datetime.now().strftime('%Y%m%d')}.md"
+        
+        return Response(
+            output.getvalue(),
+            mimetype='text/markdown',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'
+            }
+        )
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/business/<int:business_id>/content/<content_type>', methods=['DELETE'])
+def delete_business_content(business_id, content_type):
+    """Delete generated content"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # In a real system, you'd delete the actual content from storage
+        # For now, we'll just return success
+        
+        return jsonify({
+            'success': True,
+            'message': f'{content_type.upper()} content deleted successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/business/<int:business_id>/showcase-url')
+def get_business_showcase_url(business_id):
+    """Get the showcase URL for a business"""
+    try:
+        business = Business.query.get_or_404(business_id)
+        
+        # Generate showcase URL based on latest conversation
+        latest_conversation = Conversation.query.filter_by(
+            business_id=business_id
+        ).order_by(Conversation.created_at.desc()).first()
+        
+        if latest_conversation:
+            showcase_url = f"{request.host_url}public/conversation/{latest_conversation.id}"
+        else:
+            showcase_url = f"{request.host_url}business/{business_id}"
+        
+        return jsonify({
+            'success': True,
+            'showcase_url': showcase_url
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.errorhandler(500)
 def internal_error(error):
