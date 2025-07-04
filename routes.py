@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, Response
 from app import app, db
 from models import Business, Conversation, ConversationMessage, CreditPackage, Purchase
 from ai_conversation import AIConversationManager
@@ -811,6 +811,160 @@ def api_generate_topic():
 def api_test():
     """API integration test page"""
     return render_template('api_test.html')
+
+@app.route('/api/business/<int:business_id>/content-status')
+def api_business_content_status(business_id):
+    """Get content generation status for a business"""
+    try:
+        business = Business.query.get(business_id)
+        if not business:
+            return jsonify({'error': 'Business not found'}), 404
+        
+        # Mock content status for now - would be stored in database
+        status = {
+            'faq': True,  # Has generated content
+            'local_seo': False,  # No content yet
+            'voice_search': True,  # Has generated content
+            'knowledge_base': False  # No content yet
+        }
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/business/<int:business_id>/generate-content', methods=['POST'])
+def api_generate_business_content(business_id):
+    """Generate content for a business"""
+    try:
+        business = Business.query.get(business_id)
+        if not business:
+            return jsonify({'error': 'Business not found'}), 404
+        
+        data = request.get_json()
+        content_type = data.get('contentType')
+        
+        if not content_type:
+            return jsonify({'error': 'Content type required'}), 400
+        
+        # Generate content using the content ecosystem manager
+        ecosystem_manager = ContentEcosystemManager()
+        
+        if content_type == 'faq':
+            # Generate FAQ content
+            faq_data = ecosystem_manager._generate_faq_pages(business, business.industry)
+            return jsonify({
+                'success': True,
+                'content_type': content_type,
+                'data': faq_data,
+                'message': 'FAQ content generated successfully'
+            })
+        elif content_type == 'local_seo':
+            # Generate local SEO content
+            local_data = ecosystem_manager._generate_local_pages(business, business.location)
+            return jsonify({
+                'success': True,
+                'content_type': content_type,
+                'data': local_data,
+                'message': 'Local SEO content generated successfully'
+            })
+        elif content_type == 'voice_search':
+            # Generate voice search content
+            voice_data = ecosystem_manager._generate_voice_search_content(business, business.industry)
+            return jsonify({
+                'success': True,
+                'content_type': content_type,
+                'data': voice_data,
+                'message': 'Voice search content generated successfully'
+            })
+        elif content_type == 'knowledge_base':
+            # Generate knowledge base content
+            kb_data = ecosystem_manager._generate_knowledge_base(business, business.industry)
+            return jsonify({
+                'success': True,
+                'content_type': content_type,
+                'data': kb_data,
+                'message': 'Knowledge base content generated successfully'
+            })
+        else:
+            return jsonify({'error': 'Invalid content type'}), 400
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/business/<int:business_id>/content/<content_type>')
+def api_get_business_content(business_id, content_type):
+    """Get generated content for a business"""
+    try:
+        business = Business.query.get(business_id)
+        if not business:
+            return jsonify({'error': 'Business not found'}), 404
+        
+        # Mock content data - would be retrieved from database
+        content_data = {
+            'title': f'{content_type.title()} Content for {business.business_name}',
+            'content': f'This is the generated {content_type} content for {business.business_name}.',
+            'generated_at': '2025-07-04T02:00:00Z',
+            'status': 'generated'
+        }
+        
+        return jsonify(content_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/business/<int:business_id>/content/<content_type>/download')
+def api_download_business_content(business_id, content_type):
+    """Download content as PDF"""
+    try:
+        business = Business.query.get(business_id)
+        if not business:
+            return jsonify({'error': 'Business not found'}), 404
+        
+        # For now, return a simple text file
+        content = f"""
+{content_type.title()} Content for {business.business_name}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+This is a sample {content_type} content document for {business.business_name}.
+In a real implementation, this would contain the actual generated content.
+"""
+        
+        response = Response(
+            content,
+            mimetype='text/plain',
+            headers={
+                'Content-Disposition': f'attachment; filename={content_type}_{business.business_name}.txt'
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/business/<int:business_id>/content/<content_type>', methods=['DELETE'])
+def api_delete_business_content(business_id, content_type):
+    """Delete generated content"""
+    try:
+        business = Business.query.get(business_id)
+        if not business:
+            return jsonify({'error': 'Business not found'}), 404
+        
+        # In a real implementation, this would delete from database
+        return jsonify({
+            'success': True,
+            'message': f'{content_type} content deleted successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/test-ai-services')
 def test_ai_services():

@@ -1,324 +1,350 @@
-// API-Integrated Live AI Conversation Feed Solution with Short Investigation Feature
-// This solution pulls real data from your backend APIs and includes investigation summaries
+// API-Integrated Live AI Conversation Feed with Real Backend
+// Perfect Roofing Team - Real Business Data
 
-class APIIntegratedConversationFeed {
+class LiveConversationManager {
     constructor() {
-        this.isLivePage = this.detectPageType();
-        this.conversationData = [];
-        this.currentTopic = '';
-        this.messageCount = 0;
-        this.maxMessagesPerRound = 16;
-        this.lastUpdateTime = Date.now();
-        this.messageInterval = 45000; // 45 seconds base interval
-        this.timestampInterval = 30000; // 30 seconds for timestamp updates
-        this.statusCheckInterval = 60000; // 1 minute for API status checks
-        this.syncKey = 'live_conversation_sync';
-        
-        // AI services status
-        this.aiServicesStatus = {
-            openai: false,
-            anthropic: false,
-            perplexity: false,
-            gemini: false
+        this.config = {
+            BACKEND_URL: 'http://localhost:5000',
+            POLLING_INTERVAL: 30000,        // 30 seconds
+            MESSAGE_CHECK_INTERVAL: 45000,  // 45 seconds
+            API_TIMEOUT: 10000,             // 10 seconds
+            RETRY_ATTEMPTS: 3,              // 3 retry attempts
+            MAX_MESSAGES: 20                // Keep last 20 messages
         };
         
-        // AI agents configuration
-        this.agents = [
-            { id: 'GPT', name: 'Business AI Assistant', color: 'primary', service: 'openai' },
-            { id: 'GMI', name: 'Marketing AI Expert', color: 'warning', service: 'gemini' },
-            { id: 'PPL', name: 'Customer Service AI', color: 'info', service: 'perplexity' },
-            { id: 'CLD', name: 'SEO AI Specialist', color: 'primary', service: 'anthropic' }
-        ];
-        
-        this.currentAgentIndex = 0;
-        this.init();
-    }
-    
-    detectPageType() {
-        const url = window.location.pathname;
-        if (url === '/' || url.includes('home')) {
-            return 'homepage';
-        } else if (url.includes('/public/conversation/')) {
-            return 'public_conversation';
-        } else if (url.includes('/business/') || url.includes('dashboard')) {
-            return 'dashboard';
-        }
-        return 'unknown';
-    }
-    
-    init() {
-        if (this.isLivePage === 'homepage' || this.isLivePage === 'public_conversation') {
-            this.initializeLiveFeed();
-        } else if (this.isLivePage === 'dashboard') {
-            this.initializeDashboard();
-        }
-    }
-    
-    initializeLiveFeed() {
-        // Check if this is the master instance (homepage)
-        this.isMaster = this.isLivePage === 'homepage';
-        
-        // Load synchronized state
-        this.loadSyncState();
-        
-        // Initialize UI elements
-        this.createLiveStatusBar();
-        this.createCountdownTimer();
-        this.createActivityPulse();
-        this.createAIServicesStatus();
-        this.createInvestigationModal();
-        
-        // Start API polling for real data
-        this.startAPIPolling();
-        
-        // Listen for sync updates from other tabs/pages
-        this.setupCrossTabSync();
-    }
-    
-    async startAPIPolling() {
-        // Initial load
-        await this.checkAPIStatus();
-        await this.loadCurrentConversation();
-        
-        // Set up intervals for different types of updates
-        this.setupPollingIntervals();
-    }
-    
-    setupPollingIntervals() {
-        // Check API status every minute
-        setInterval(() => {
-            this.checkAPIStatus();
-        }, this.statusCheckInterval);
-        
-        // Update timestamps every 30 seconds
-        setInterval(() => {
-            this.updateTimestamps();
-        }, this.timestampInterval);
-        
-        // Check for new messages every 45-90 seconds (randomized)
-        this.scheduleNextMessageCheck();
-    }
-    
-    scheduleNextMessageCheck() {
-        const randomInterval = this.messageInterval + (Math.random() * 45000); // 45-90 seconds
-        
-        setTimeout(async () => {
-            if (this.isMaster) {
-                await this.checkForNewMessage();
-            }
-            this.scheduleNextMessageCheck(); // Schedule next check
-        }, randomInterval);
-    }
-    
-    async checkAPIStatus() {
-        try {
-            const response = await fetch('/api-status');
-            if (response.ok) {
-                const status = await response.json();
-                this.aiServicesStatus = status;
-                this.updateAIServicesDisplay();
-            }
-        } catch (error) {
-            console.log('API status check failed:', error);
-            // Set all services to false on error
-            this.aiServicesStatus = {
+        this.state = {
+            messages: [],
+            currentTopic: null,
+            lastUpdate: null,
+            isLoading: false,
+            apiStatus: {
                 openai: false,
                 anthropic: false,
                 perplexity: false,
                 gemini: false
-            };
-            this.updateAIServicesDisplay();
-        }
-    }
-    
-    async loadCurrentConversation() {
-        try {
-            // For homepage, we'll use the current live conversation
-            // For public pages, we'll sync with the live conversation
-            const response = await fetch('/api/live-conversation');
-            if (response.ok) {
-                const data = await response.json();
-                this.handleLiveConversationData(data);
-            } else {
-                // Fallback: extract from current page if API not available
-                this.extractConversationFromPage();
+            },
+            roundInfo: {
+                roundNumber: 1,
+                messageCount: 0,
+                messagesRemaining: 16
             }
-        } catch (error) {
-            console.log('Failed to load conversation from API:', error);
-            this.extractConversationFromPage();
-        }
-    }
-    
-    async checkForNewMessage() {
-        try {
-            const response = await fetch('/api/live-conversation/latest');
-            if (response.ok) {
-                const data = await response.json();
-                if (data.message && data.message.timestamp !== this.getLatestMessageTimestamp()) {
-                    this.addNewMessage(data.message, data.topic);
-                }
-            }
-        } catch (error) {
-            console.log('Failed to check for new message:', error);
-        }
-    }
-    
-    handleLiveConversationData(data) {
-        if (data.messages && Array.isArray(data.messages)) {
-            this.conversationData = data.messages;
-            this.currentTopic = data.topic || '';
-            this.messageCount = data.messageCount || 0;
-            this.lastUpdateTime = Date.now();
-            
-            this.saveSyncState();
-            this.updateDisplay();
-            this.updateTopicDisplay();
-        }
-    }
-    
-    extractConversationFromPage() {
-        // Fallback: extract existing conversation from page DOM
-        const messageElements = document.querySelectorAll('.message-stream-item');
-        this.conversationData = [];
-        
-        messageElements.forEach((element, index) => {
-            const agentBadge = element.querySelector('.badge');
-            const agentName = element.querySelector('h6');
-            const messageContent = element.querySelector('p');
-            const timestamp = element.querySelector('.text-muted');
-            
-            if (agentBadge && agentName && messageContent && timestamp) {
-                const message = {
-                    id: Date.now() - index,
-                    agent_name: agentBadge.textContent.trim(),
-                    agent_type: agentName.textContent.trim(),
-                    message_content: messageContent.textContent.trim(),
-                    timestamp: timestamp.textContent.trim(),
-                    source_url: 'https://perfectroofingteam.com'
-                };
-                this.conversationData.push(message);
-            }
-        });
-        
-        this.saveSyncState();
-    }
-    
-    addNewMessage(messageData, topic) {
-        // Add new message from API
-        const message = {
-            id: Date.now(),
-            agent_name: messageData.agent_name,
-            agent_type: messageData.agent_type,
-            message_content: messageData.message_content,
-            timestamp: messageData.timestamp,
-            source_url: messageData.source_url || 'https://perfectroofingteam.com'
         };
         
-        // Add to beginning of array (newest first)
-        this.conversationData.unshift(message);
+        this.timers = {
+            polling: null,
+            messageCheck: null,
+            countdown: null
+        };
         
-        // Keep only last 16 messages
-        if (this.conversationData.length > this.maxMessagesPerRound) {
-            this.conversationData = this.conversationData.slice(0, this.maxMessagesPerRound);
-        }
-        
-        // Update topic if provided
-        if (topic && topic !== this.currentTopic) {
-            this.currentTopic = topic;
-            this.messageCount = 1; // Reset count for new topic
-            this.updateTopicDisplay();
-        } else {
-            this.messageCount++;
-        }
-        
-        // Check if we need to start a new round
-        if (this.messageCount >= this.maxMessagesPerRound) {
-            this.startNewRound();
-        }
-        
-        this.lastUpdateTime = Date.now();
-        this.saveSyncState();
-        this.updateDisplay();
-        this.triggerActivityPulse();
+        this.init();
     }
     
-    startNewRound() {
-        // Reset for new round of 16 messages
-        this.messageCount = 0;
-        this.conversationData = []; // Clear for new topic
-        
-        // Trigger new topic generation if this is master
-        if (this.isMaster) {
-            this.requestNewTopic();
-        }
+    init() {
+        console.log('[LiveConversation] Initializing with real backend connection...');
+        this.setupEventListeners();
+        this.loadInitialConversation();
+        this.startPolling();
+        this.updateAPIStatus();
+        this.startCountdown();
     }
     
-    async requestNewTopic() {
-        try {
-            const response = await fetch('/api/generate-topic', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.currentTopic = data.topic;
-                this.updateTopicDisplay();
-                this.saveSyncState();
+    setupEventListeners() {
+        // Investigation button clicks
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.investigation-btn')) {
+                e.preventDefault();
+                const btn = e.target.closest('.investigation-btn');
+                const messageId = btn.dataset.messageId;
+                const agentType = btn.dataset.agentType;
+                const messageContent = btn.dataset.messageContent;
+                this.showInvestigation(agentType, messageContent, messageId);
             }
-        } catch (error) {
-            console.log('Failed to generate new topic:', error);
-        }
-    }
-    
-    updateTimestamps() {
-        // Update all message timestamps to current time
-        const currentTime = new Date();
-        const timeString = this.formatTime(currentTime);
-        
-        this.conversationData.forEach(message => {
-            message.timestamp = timeString;
         });
         
-        this.saveSyncState();
-        this.updateDisplay();
+        // Investigation modal actions
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'download-investigation') {
+                this.downloadInvestigation();
+            } else if (e.target.id === 'print-investigation') {
+                this.printInvestigation();
+            } else if (e.target.id === 'share-investigation') {
+                this.shareInvestigation();
+            }
+        });
+        
+        // Refresh button
+        const refreshBtn = document.querySelector('.refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.refreshConversation();
+            });
+        }
     }
     
-    getLatestMessageTimestamp() {
-        if (this.conversationData.length > 0) {
-            return this.conversationData[0].timestamp;
+    async loadInitialConversation() {
+        console.log('[LiveConversation] Loading initial conversation from backend...');
+        this.setLoadingState(true);
+        
+        try {
+            const response = await this.makeAPICall('/api/live-conversation');
+            if (response.success) {
+                this.state.messages = response.data.messages || [];
+                this.state.currentTopic = response.data.topic;
+                this.state.roundInfo = {
+                    roundNumber: response.data.round_number || 1,
+                    messageCount: response.data.message_count || 0,
+                    messagesRemaining: 16 - (response.data.message_count || 0)
+                };
+                this.state.lastUpdate = new Date(response.data.last_update);
+                
+                this.renderMessages();
+                this.updateTopicDisplay();
+                this.updateRoundInfo();
+                
+                console.log('[LiveConversation] Initial conversation loaded successfully');
+            } else {
+                throw new Error('Failed to load conversation data');
+            }
+        } catch (error) {
+            console.error('[LiveConversation] Error loading initial conversation:', error);
+            this.showError('Unable to load live conversation. Please check your connection.');
+        } finally {
+            this.setLoadingState(false);
         }
-        return null;
+    }
+    
+    async checkForNewMessages() {
+        try {
+            const response = await this.makeAPICall('/api/live-conversation/latest');
+            if (response.success && response.new_message) {
+                // New message available
+                const newMessage = response.data;
+                this.addNewMessage(newMessage);
+                
+                // Update round info
+                if (response.round_info) {
+                    this.state.roundInfo = response.round_info;
+                    this.updateRoundInfo();
+                }
+                
+                // Update topic if changed
+                if (response.topic !== this.state.currentTopic) {
+                    this.state.currentTopic = response.topic;
+                    this.updateTopicDisplay();
+                }
+                
+                console.log('[LiveConversation] New message received:', newMessage.agent_name);
+            } else {
+                // No new message, update countdown
+                const nextMessageIn = response.next_message_in || 45;
+                this.updateCountdownDisplay(nextMessageIn);
+            }
+        } catch (error) {
+            console.error('[LiveConversation] Error checking for new messages:', error);
+        }
+    }
+    
+    addNewMessage(message) {
+        // Add to beginning of array (newest first)
+        this.state.messages.unshift(message);
+        
+        // Keep only last MAX_MESSAGES
+        if (this.state.messages.length > this.config.MAX_MESSAGES) {
+            this.state.messages = this.state.messages.slice(0, this.config.MAX_MESSAGES);
+        }
+        
+        // Update last update time
+        this.state.lastUpdate = new Date();
+        
+        // Re-render messages
+        this.renderMessages();
+        
+        // Show activity pulse
+        this.showActivityPulse();
+        
+        // Reset countdown
+        this.resetCountdown();
+    }
+    
+    renderMessages() {
+        const container = document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container');
+        if (!container) {
+            console.warn('[LiveConversation] No conversation container found');
+            return;
+        }
+        
+        if (this.state.messages.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Loading live conversation data...
+                </div>
+            `;
+            return;
+        }
+        
+        const messagesHTML = this.state.messages.map(message => this.renderMessage(message)).join('');
+        container.innerHTML = messagesHTML;
+        
+        // Update message count display
+        this.updateMessageCount();
+    }
+    
+    renderMessage(message) {
+        const agentColors = {
+            'GPT': 'primary',
+            'CLD': 'success', 
+            'PPL': 'info',
+            'GMI': 'warning'
+        };
+        
+        const agentColor = agentColors[message.agent_name] || 'secondary';
+        
+        return `
+            <div class="message-card card mb-3 border-0 shadow-sm" data-message-id="${message.id}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-${agentColor} me-2">${message.agent_name}</span>
+                            <small class="text-muted">${message.agent_type} • Live Discussion</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <small class="text-muted me-2">${message.timestamp}</small>
+                            <div class="live-indicator">
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-circle pulse-animation"></i> LIVE
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="card-text mb-3">${message.message_content}</p>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="source-info">
+                            <i class="fas fa-link me-1"></i>
+                            <small class="text-muted">Source Reference: 
+                                <a href="${message.source_url}" target="_blank" class="text-decoration-none">
+                                    ${message.source_url}
+                                </a>
+                                <span class="badge bg-secondary ms-1">Perfect Roofing Team</span>
+                            </small>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm investigation-btn" 
+                                data-message-id="${message.id}"
+                                data-agent-type="${message.agent_type}"
+                                data-message-content="${message.message_content}">
+                            <i class="fas fa-search me-1"></i>Short Investigation
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    async showInvestigation(agentType, messageContent, messageId) {
+        console.log('[Investigation] Requesting investigation for:', agentType);
+        
+        try {
+            const response = await this.makeAPICall('/api/investigation', 'POST', {
+                agentType: agentType,
+                messageContent: messageContent,
+                messageId: messageId
+            });
+            
+            if (response.success) {
+                this.displayInvestigationModal(response.data);
+            } else {
+                throw new Error('Investigation request failed');
+            }
+        } catch (error) {
+            console.error('[Investigation] Error:', error);
+            this.showError('Unable to generate investigation. Please try again.');
+        }
+    }
+    
+    displayInvestigationModal(data) {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('investigation-modal');
+        if (!modal) {
+            modal = this.createInvestigationModal();
+        }
+        
+        // Populate modal content
+        const modalTitle = modal.querySelector('.modal-title');
+        const modalBody = modal.querySelector('.modal-body');
+        
+        modalTitle.textContent = data.title;
+        
+        modalBody.innerHTML = `
+            <div class="investigation-content">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-building me-2"></i>${data.business}
+                    </h6>
+                    <span class="badge bg-success">
+                        <i class="fas fa-check-circle me-1"></i>${data.confidence}% Confidence
+                    </span>
+                </div>
+                
+                <div class="analysis-content mb-4">
+                    <h6><i class="fas fa-chart-line me-2"></i>Analysis</h6>
+                    <div class="analysis-text">${data.analysis.replace(/\n/g, '<br>')}</div>
+                </div>
+                
+                <div class="recommendations-content">
+                    <h6><i class="fas fa-lightbulb me-2"></i>Recommendations</h6>
+                    <ul class="list-group list-group-flush">
+                        ${data.recommendations.map(rec => `
+                            <li class="list-group-item border-0 px-0">
+                                <i class="fas fa-arrow-right text-primary me-2"></i>${rec}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                <div class="investigation-meta mt-4 pt-3 border-top">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>Generated: ${new Date(data.generated_at).toLocaleString()}
+                        <span class="ms-3">
+                            <i class="fas fa-robot me-1"></i>Agent: ${data.agent_type}
+                        </span>
+                    </small>
+                </div>
+            </div>
+        `;
+        
+        // Store investigation data for download/share
+        this.currentInvestigation = data;
+        
+        // Show modal using Bootstrap
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
     }
     
     createInvestigationModal() {
-        // Create modal for short investigation display
         const modalHTML = `
-            <div class="modal fade" id="investigationModal" tabindex="-1" aria-labelledby="investigationModalLabel" aria-hidden="true">
+            <div class="modal fade" id="investigation-modal" tabindex="-1" aria-labelledby="investigation-modal-label" aria-hidden="true">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title" id="investigationModalLabel">
-                                <i class="fas fa-search me-2"></i>Short Investigation
+                            <h5 class="modal-title" id="investigation-modal-label">
+                                <i class="fas fa-search me-2"></i>AI Investigation Analysis
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <div id="investigationContent">
-                                <div class="text-center">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Loading investigation...</span>
-                                    </div>
-                                    <p class="mt-2">Generating investigation summary...</p>
-                                </div>
-                            </div>
+                            <!-- Content will be populated dynamically -->
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" id="shareInvestigation">
-                                <i class="fas fa-share me-1"></i>Share Investigation
+                            <button type="button" class="btn btn-outline-secondary" id="print-investigation">
+                                <i class="fas fa-print me-1"></i>Print
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="download-investigation">
+                                <i class="fas fa-download me-1"></i>Download PDF
+                            </button>
+                            <button type="button" class="btn btn-primary" id="share-investigation">
+                                <i class="fas fa-share me-1"></i>Share
                             </button>
                         </div>
                     </div>
@@ -326,846 +352,611 @@ class APIIntegratedConversationFeed {
             </div>
         `;
         
-        // Add modal to body if it doesn't exist
-        if (!document.getElementById('investigationModal')) {
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-        }
-        
-        // Add event listener for share button
-        document.getElementById('shareInvestigation').addEventListener('click', () => {
-            this.shareInvestigation();
-        });
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        return document.getElementById('investigation-modal');
     }
     
-    async showInvestigation(messageId, messageContent, agentType) {
-        const modal = new bootstrap.Modal(document.getElementById('investigationModal'));
-        const content = document.getElementById('investigationContent');
-        
-        // Show loading state
-        content.innerHTML = `
-            <div class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading investigation...</span>
-                </div>
-                <p class="mt-2">Generating investigation summary...</p>
-            </div>
-        `;
-        
-        modal.show();
-        
-        try {
-            // Try to get investigation from API
-            const response = await fetch('/api/investigation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    messageId: messageId,
-                    messageContent: messageContent,
-                    agentType: agentType,
-                    topic: this.currentTopic
-                })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.displayInvestigation(data);
-            } else {
-                // Fallback to generated investigation
-                this.generateFallbackInvestigation(messageContent, agentType);
-            }
-        } catch (error) {
-            console.log('Failed to load investigation from API:', error);
-            // Fallback to generated investigation
-            this.generateFallbackInvestigation(messageContent, agentType);
-        }
-    }
-    
-    generateFallbackInvestigation(messageContent, agentType) {
-        // Generate a realistic investigation summary based on the message
-        const investigations = {
-            'Business AI Assistant': {
-                title: 'Business Analysis & Market Position',
-                sections: [
-                    {
-                        title: 'Service Quality Assessment',
-                        content: 'Perfect Roofing Team demonstrates exceptional service quality through their comprehensive approach to roofing solutions. Their commitment to using premium materials and employing certified contractors positions them as a market leader in the New Jersey roofing industry.'
-                    },
-                    {
-                        title: 'Competitive Advantages',
-                        content: 'Key differentiators include 24/7 emergency response capabilities, comprehensive warranty coverage, and a proven track record of customer satisfaction. Their local expertise in New Jersey weather patterns and building codes provides significant value to customers.'
-                    },
-                    {
-                        title: 'Business Recommendations',
-                        content: 'Continue focusing on quality craftsmanship and customer service excellence. Expand digital marketing efforts to reach more homeowners in need of roofing services. Consider partnerships with local insurance companies for storm damage restoration projects.'
-                    }
-                ]
+    async makeAPICall(endpoint, method = 'GET', data = null) {
+        const url = `${this.config.BACKEND_URL}${endpoint}`;
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
             },
-            'Marketing AI Expert': {
-                title: 'Marketing Strategy & Brand Analysis',
-                sections: [
-                    {
-                        title: 'Brand Positioning',
-                        content: 'Perfect Roofing Team has successfully positioned itself as a premium, reliable roofing contractor in the New Jersey market. Their emphasis on quality materials and professional installation resonates well with homeowners seeking long-term value.'
-                    },
-                    {
-                        title: 'Digital Presence',
-                        content: 'Strong online presence with positive customer reviews and comprehensive service descriptions. Website optimization and local SEO strategies are effectively driving qualified leads from homeowners in need of roofing services.'
-                    },
-                    {
-                        title: 'Marketing Opportunities',
-                        content: 'Leverage seasonal marketing campaigns during storm seasons. Develop case studies showcasing successful projects. Implement referral programs to capitalize on satisfied customer networks.'
-                    }
-                ]
-            },
-            'Customer Service AI': {
-                title: 'Customer Experience & Service Analysis',
-                sections: [
-                    {
-                        title: 'Service Excellence',
-                        content: 'Perfect Roofing Team excels in customer communication and project transparency. Their detailed documentation process and regular updates keep customers informed throughout the roofing project lifecycle.'
-                    },
-                    {
-                        title: 'Customer Satisfaction',
-                        content: 'High customer satisfaction rates driven by professional installation teams, quality materials, and comprehensive warranty coverage. Customers particularly appreciate the 24/7 emergency response capability.'
-                    },
-                    {
-                        title: 'Service Improvements',
-                        content: 'Continue investing in customer communication tools and project management systems. Expand customer education resources about roofing maintenance and care. Develop loyalty programs for repeat customers.'
-                    }
-                ]
-            },
-            'SEO AI Specialist': {
-                title: 'SEO Performance & Online Visibility',
-                sections: [
-                    {
-                        title: 'Search Engine Performance',
-                        content: 'Perfect Roofing Team maintains strong local search visibility for key roofing-related keywords in New Jersey. Their content strategy effectively targets homeowners searching for roofing contractors and emergency repair services.'
-                    },
-                    {
-                        title: 'Content Strategy',
-                        content: 'Well-optimized service pages and location-specific content drive qualified organic traffic. Regular content updates about roofing tips, maintenance, and industry insights establish authority in the roofing sector.'
-                    },
-                    {
-                        title: 'SEO Recommendations',
-                        content: 'Expand content marketing with seasonal roofing guides and maintenance tips. Optimize for voice search queries related to emergency roofing services. Build more local citations and industry partnerships for link building.'
-                    }
-                ]
-            }
+            timeout: this.config.API_TIMEOUT
         };
         
-        const investigation = investigations[agentType] || investigations['Business AI Assistant'];
-        this.displayInvestigation({
-            title: investigation.title,
-            summary: `Comprehensive analysis of Perfect Roofing Team's ${investigation.title.toLowerCase()} based on current market conditions and industry best practices.`,
-            sections: investigation.sections,
-            messageContent: messageContent,
-            agentType: agentType,
-            timestamp: new Date().toLocaleString(),
-            confidence: Math.floor(Math.random() * 15) + 85 // 85-99% confidence
-        });
-    }
-    
-    displayInvestigation(data) {
-        const content = document.getElementById('investigationContent');
+        if (data && method !== 'GET') {
+            options.body = JSON.stringify(data);
+        }
         
-        content.innerHTML = `
-            <div class="investigation-summary">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="investigation-icon me-3">
-                        <i class="fas fa-search-plus text-primary" style="font-size: 2rem;"></i>
-                    </div>
-                    <div>
-                        <h4 class="mb-1">${data.title}</h4>
-                        <p class="text-muted mb-0">${data.summary}</p>
-                    </div>
-                </div>
+        for (let attempt = 1; attempt <= this.config.RETRY_ATTEMPTS; attempt++) {
+            try {
+                const response = await fetch(url, options);
                 
-                <div class="investigation-meta mb-4">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <small class="text-muted">
-                                <i class="fas fa-robot me-1"></i>
-                                Analyzed by: ${data.agentType}
-                            </small>
-                        </div>
-                        <div class="col-md-6 text-md-end">
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>
-                                Generated: ${data.timestamp}
-                            </small>
-                        </div>
-                    </div>
-                    <div class="row mt-2">
-                        <div class="col-12">
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar bg-success" style="width: ${data.confidence}%"></div>
-                            </div>
-                            <small class="text-muted">Confidence Level: ${data.confidence}%</small>
-                        </div>
-                    </div>
-                </div>
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
-                <div class="investigation-sections">
-                    ${data.sections.map(section => `
-                        <div class="investigation-section mb-4">
-                            <h5 class="section-title">
-                                <i class="fas fa-chevron-right me-2 text-primary"></i>
-                                ${section.title}
-                            </h5>
-                            <p class="section-content">${section.content}</p>
-                        </div>
-                    `).join('')}
-                </div>
+                const result = await response.json();
+                return result;
                 
-                <div class="investigation-footer mt-4 pt-3 border-top">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h6>Original Message Context:</h6>
-                            <blockquote class="blockquote-sm">
-                                <p class="mb-0 text-muted">"${data.messageContent}"</p>
-                            </blockquote>
-                        </div>
-                        <div class="col-md-4 text-md-end">
-                            <div class="investigation-actions">
-                                <button class="btn btn-outline-primary btn-sm me-2" onclick="window.conversationFeed.downloadInvestigation()">
-                                    <i class="fas fa-download me-1"></i>Download
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" onclick="window.conversationFeed.printInvestigation()">
-                                    <i class="fas fa-print me-1"></i>Print
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Store current investigation for sharing/downloading
-        this.currentInvestigation = data;
-    }
-    
-    shareInvestigation() {
-        if (this.currentInvestigation) {
-            const shareText = `Investigation Summary: ${this.currentInvestigation.title}\n\n${this.currentInvestigation.summary}\n\nView full analysis at: ${window.location.href}`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: `Investigation: ${this.currentInvestigation.title}`,
-                    text: shareText,
-                    url: window.location.href
-                });
-            } else {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(shareText).then(() => {
-                    alert('Investigation summary copied to clipboard!');
-                });
+            } catch (error) {
+                console.warn(`[API] Attempt ${attempt} failed for ${endpoint}:`, error.message);
+                
+                if (attempt === this.config.RETRY_ATTEMPTS) {
+                    throw error;
+                }
+                
+                // Wait before retry (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, attempt * 1000));
             }
         }
     }
     
-    downloadInvestigation() {
-        if (this.currentInvestigation) {
-            const content = `
-Investigation Summary
-====================
-
-Title: ${this.currentInvestigation.title}
-Generated: ${this.currentInvestigation.timestamp}
-Analyzed by: ${this.currentInvestigation.agentType}
-Confidence: ${this.currentInvestigation.confidence}%
-
-Summary:
-${this.currentInvestigation.summary}
-
-Detailed Analysis:
-${this.currentInvestigation.sections.map(section => `
-${section.title}
-${'='.repeat(section.title.length)}
-${section.content}
-`).join('\n')}
-
-Original Message:
-"${this.currentInvestigation.messageContent}"
-
-Generated by Perfect Roofing Team AI Analysis System
+    startPolling() {
+        // Clear existing timers
+        this.stopPolling();
+        
+        // Start message checking
+        this.timers.messageCheck = setInterval(() => {
+            this.checkForNewMessages();
+        }, this.config.MESSAGE_CHECK_INTERVAL);
+        
+        // Start general polling
+        this.timers.polling = setInterval(() => {
+            this.updateAPIStatus();
+        }, this.config.POLLING_INTERVAL);
+        
+        console.log('[LiveConversation] Polling started');
+    }
+    
+    stopPolling() {
+        if (this.timers.messageCheck) {
+            clearInterval(this.timers.messageCheck);
+            this.timers.messageCheck = null;
+        }
+        
+        if (this.timers.polling) {
+            clearInterval(this.timers.polling);
+            this.timers.polling = null;
+        }
+        
+        if (this.timers.countdown) {
+            clearInterval(this.timers.countdown);
+            this.timers.countdown = null;
+        }
+        
+        console.log('[LiveConversation] Polling stopped');
+    }
+    
+    async updateAPIStatus() {
+        try {
+            const response = await this.makeAPICall('/api-status');
+            if (response) {
+                this.state.apiStatus = {
+                    openai: response.openai || false,
+                    anthropic: response.anthropic || false,
+                    perplexity: response.perplexity || false,
+                    gemini: response.gemini || false
+                };
+                this.updateAPIStatusDisplay();
+            }
+        } catch (error) {
+            console.error('[API Status] Error:', error);
+            // Set all to offline on error
+            this.state.apiStatus = {
+                openai: false,
+                anthropic: false,
+                perplexity: false,
+                gemini: false
+            };
+            this.updateAPIStatusDisplay();
+        }
+    }
+    
+    updateAPIStatusDisplay() {
+        const statusElements = {
+            'openai': document.querySelector('.api-status-openai'),
+            'anthropic': document.querySelector('.api-status-anthropic'),
+            'perplexity': document.querySelector('.api-status-perplexity'),
+            'gemini': document.querySelector('.api-status-gemini')
+        };
+        
+        Object.keys(statusElements).forEach(service => {
+            const element = statusElements[service];
+            if (element) {
+                const isOnline = this.state.apiStatus[service];
+                element.className = `badge ${isOnline ? 'bg-success' : 'bg-danger'}`;
+                element.innerHTML = `<i class="fas fa-circle"></i> ${service.toUpperCase()} ${isOnline ? 'Online' : 'Offline'}`;
+            }
+        });
+    }
+    
+    startCountdown() {
+        let seconds = 45;
+        
+        this.timers.countdown = setInterval(() => {
+            seconds--;
+            this.updateCountdownDisplay(seconds);
+            
+            if (seconds <= 0) {
+                seconds = 45; // Reset
+                this.checkForNewMessages();
+            }
+        }, 1000);
+    }
+    
+    updateCountdownDisplay(seconds) {
+        const countdownElement = document.querySelector('.countdown-timer, #countdown-timer');
+        if (countdownElement) {
+            countdownElement.textContent = seconds;
+        }
+        
+        // Update progress bar if exists
+        const progressBar = document.querySelector('.countdown-progress');
+        if (progressBar) {
+            const percentage = (seconds / 45) * 100;
+            progressBar.style.width = `${percentage}%`;
+        }
+    }
+    
+    resetCountdown() {
+        if (this.timers.countdown) {
+            clearInterval(this.timers.countdown);
+        }
+        this.startCountdown();
+    }
+    
+    updateTopicDisplay() {
+        const topicElements = document.querySelectorAll('.current-topic, .conversation-topic');
+        topicElements.forEach(element => {
+            if (element && this.state.currentTopic) {
+                element.textContent = this.state.currentTopic;
+            }
+        });
+    }
+    
+    updateRoundInfo() {
+        // Update round number
+        const roundElements = document.querySelectorAll('.round-number');
+        roundElements.forEach(element => {
+            if (element) {
+                element.textContent = this.state.roundInfo.roundNumber;
+            }
+        });
+        
+        // Update message count
+        const countElements = document.querySelectorAll('.message-count');
+        countElements.forEach(element => {
+            if (element) {
+                element.textContent = this.state.roundInfo.messageCount;
+            }
+        });
+        
+        // Update messages remaining
+        const remainingElements = document.querySelectorAll('.messages-remaining');
+        remainingElements.forEach(element => {
+            if (element) {
+                element.textContent = this.state.roundInfo.messagesRemaining;
+            }
+        });
+    }
+    
+    updateMessageCount() {
+        const countElement = document.querySelector('.total-messages');
+        if (countElement) {
+            countElement.textContent = this.state.messages.length;
+        }
+    }
+    
+    setLoadingState(isLoading) {
+        this.state.isLoading = isLoading;
+        
+        const loadingElements = document.querySelectorAll('.loading-indicator');
+        loadingElements.forEach(element => {
+            element.style.display = isLoading ? 'block' : 'none';
+        });
+        
+        const refreshBtn = document.querySelector('.refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.disabled = isLoading;
+            if (isLoading) {
+                refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+            } else {
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
+            }
+        }
+    }
+    
+    showActivityPulse() {
+        // Add visual indication of new activity
+        const container = document.querySelector('.conversation-messages, .live-conversation-feed');
+        if (container) {
+            container.classList.add('new-activity');
+            setTimeout(() => {
+                container.classList.remove('new-activity');
+            }, 3000);
+        }
+    }
+    
+    showError(message) {
+        const errorContainer = document.querySelector('.error-container');
+        if (errorContainer) {
+            errorContainer.innerHTML = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             `;
             
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `investigation-${Date.now()}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = errorContainer.querySelector('.alert');
+                if (alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            }, 5000);
         }
+    }
+    
+    async refreshConversation() {
+        console.log('[LiveConversation] Manual refresh requested');
+        await this.loadInitialConversation();
+    }
+    
+    // Investigation modal actions
+    downloadInvestigation() {
+        if (!this.currentInvestigation) return;
+        
+        const data = this.currentInvestigation;
+        const content = `
+AI Investigation Report
+=====================
+
+Business: ${data.business}
+Agent: ${data.agent_type}
+Confidence: ${data.confidence}%
+Generated: ${new Date(data.generated_at).toLocaleString()}
+
+Analysis:
+${data.analysis}
+
+Recommendations:
+${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
+        `;
+        
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `investigation-${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
     
     printInvestigation() {
+        if (!this.currentInvestigation) return;
+        
         const printWindow = window.open('', '_blank');
+        const data = this.currentInvestigation;
+        
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Investigation Summary</title>
+                    <title>AI Investigation Report</title>
                     <style>
                         body { font-family: Arial, sans-serif; margin: 20px; }
-                        h1, h2 { color: #0d6efd; }
-                        .meta { background: #f8f9fa; padding: 10px; margin: 10px 0; }
-                        .section { margin: 20px 0; }
-                        blockquote { background: #f8f9fa; padding: 10px; border-left: 4px solid #0d6efd; }
+                        .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+                        .section { margin-bottom: 20px; }
+                        .recommendations { list-style-type: decimal; }
                     </style>
                 </head>
                 <body>
-                    ${document.getElementById('investigationContent').innerHTML}
+                    <div class="header">
+                        <h1>AI Investigation Report</h1>
+                        <p><strong>Business:</strong> ${data.business}</p>
+                        <p><strong>Agent:</strong> ${data.agent_type}</p>
+                        <p><strong>Confidence:</strong> ${data.confidence}%</p>
+                        <p><strong>Generated:</strong> ${new Date(data.generated_at).toLocaleString()}</p>
+                    </div>
+                    
+                    <div class="section">
+                        <h2>Analysis</h2>
+                        <p>${data.analysis.replace(/\n/g, '<br>')}</p>
+                    </div>
+                    
+                    <div class="section">
+                        <h2>Recommendations</h2>
+                        <ol class="recommendations">
+                            ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ol>
+                    </div>
                 </body>
             </html>
         `);
+        
         printWindow.document.close();
         printWindow.print();
     }
     
-    createAIServicesStatus() {
-        const existingStatus = document.getElementById('ai-services-status');
-        if (existingStatus) return;
+    shareInvestigation() {
+        if (!this.currentInvestigation) return;
         
-        const statusContainer = document.createElement('div');
-        statusContainer.id = 'ai-services-status';
-        statusContainer.className = 'ai-services-status mb-3';
+        const data = this.currentInvestigation;
+        const shareText = `AI Investigation Report for ${data.business}\n\nAnalysis: ${data.analysis}\n\nGenerated by ${data.agent_type} AI Agent`;
         
-        const conversationStream = document.getElementById('conversation-stream');
-        if (conversationStream) {
-            // Insert at the bottom of the conversation stream
-            conversationStream.appendChild(statusContainer);
+        if (navigator.share) {
+            navigator.share({
+                title: 'AI Investigation Report',
+                text: shareText,
+                url: window.location.href
+            });
+        } else {
+            // Fallback: copy to clipboard
+            navigator.clipboard.writeText(shareText).then(() => {
+                alert('Investigation report copied to clipboard!');
+            });
         }
-        
-        this.updateAIServicesDisplay();
     }
     
-    updateAIServicesDisplay() {
-        const statusContainer = document.getElementById('ai-services-status');
-        if (!statusContainer) return;
-        
-        const serviceMapping = {
-            gemini: { name: 'Google AI', status: 'Indexed', color: 'primary' },
-            openai: { name: 'ChatGPT', status: 'Crawled', color: 'success' },
-            perplexity: { name: 'Perplexity', status: 'Listed', color: 'warning' },
-            anthropic: { name: 'Anthropic', status: 'Ranked', color: 'info' }
-        };
-        
-        let statusHTML = '<div class="card-footer text-center bg-light"><div class="row text-center">';
-        
-        Object.keys(serviceMapping).forEach(serviceKey => {
-            const service = serviceMapping[serviceKey];
-            const isOnline = this.aiServicesStatus[serviceKey];
-            const statusClass = isOnline ? 'text-' + service.color : 'text-muted';
-            const statusIcon = isOnline ? 'fas fa-check-circle' : 'fas fa-times-circle';
-            
-            statusHTML += `
-                <div class="col-3">
-                    <div class="service-status ${isOnline ? 'online' : 'offline'}">
-                        <i class="${statusIcon} me-1"></i>
-                        <strong class="${statusClass}">${service.name}</strong><br>
-                        <small class="text-muted">${service.status}</small>
-                    </div>
-                </div>
-            `;
-        });
-        
-        statusHTML += '</div>';
-        statusHTML += '<p class="text-muted mt-2 mb-0 small">Real-time status of AI service connections</p>';
-        statusHTML += '</div>';
-        
-        statusContainer.innerHTML = statusHTML;
+    // Cleanup method
+    destroy() {
+        this.stopPolling();
+        console.log('[LiveConversation] Manager destroyed');
+    }
+}
+
+// Dashboard Controls Manager
+class DashboardControlsManager {
+    constructor() {
+        this.businessId = this.extractBusinessId();
+        this.apiBaseUrl = 'http://localhost:5000';
+        this.init();
     }
     
-    updateTopicDisplay() {
-        const topicElements = document.querySelectorAll('.current-topic');
-        topicElements.forEach(element => {
-            element.textContent = this.currentTopic;
-        });
-        
-        // Update page title if topic is available
-        if (this.currentTopic) {
-            const titleElement = document.querySelector('h1, .page-title');
-            if (titleElement && this.isLivePage === 'public_conversation') {
-                titleElement.textContent = this.currentTopic;
+    extractBusinessId() {
+        const pathParts = window.location.pathname.split('/');
+        const businessIndex = pathParts.indexOf('business');
+        return businessIndex !== -1 && pathParts[businessIndex + 1] ? pathParts[businessIndex + 1] : '1';
+    }
+    
+    init() {
+        this.setupDashboardControls();
+        this.loadContentStatus();
+    }
+    
+    setupDashboardControls() {
+        // Add event listeners for dashboard actions
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action]')) {
+                e.preventDefault();
+                const button = e.target.closest('[data-action]');
+                const action = button.dataset.action;
+                const contentType = button.dataset.contentType;
+                
+                this.handleDashboardAction(action, contentType, button);
             }
-        }
+        });
     }
     
-    loadSyncState() {
+    async handleDashboardAction(action, contentType, button) {
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+        button.disabled = true;
+        
         try {
-            const syncData = localStorage.getItem(this.syncKey);
-            if (syncData) {
-                const parsed = JSON.parse(syncData);
-                this.conversationData = parsed.messages || [];
-                this.currentTopic = parsed.topic || '';
-                this.messageCount = parsed.messageCount || 0;
-                this.lastUpdateTime = parsed.lastUpdate || Date.now();
-                this.currentAgentIndex = parsed.agentIndex || 0;
+            switch (action) {
+                case 'generate':
+                    await this.generateContent(contentType);
+                    break;
+                case 'view':
+                    await this.viewContent(contentType);
+                    break;
+                case 'download':
+                    await this.downloadContent(contentType);
+                    break;
+                case 'delete':
+                    await this.deleteContent(contentType);
+                    break;
             }
         } catch (error) {
-            console.log('No sync data found, starting fresh');
+            console.error('Dashboard action error:', error);
+            this.showNotification('Action failed. Please try again.', 'danger');
+        } finally {
+            button.innerHTML = originalHTML;
+            button.disabled = false;
         }
     }
     
-    saveSyncState() {
-        const syncData = {
-            messages: this.conversationData,
-            topic: this.currentTopic,
-            messageCount: this.messageCount,
-            lastUpdate: this.lastUpdateTime,
-            agentIndex: this.currentAgentIndex,
-            timestamp: Date.now()
-        };
-        localStorage.setItem(this.syncKey, JSON.stringify(syncData));
+    async generateContent(contentType) {
+        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/generate-content`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contentType: contentType })
+        });
         
-        // Broadcast to other tabs
-        this.broadcastSync(syncData);
+        if (response.ok) {
+            this.showNotification(`${contentType} content generated successfully!`, 'success');
+            this.loadContentStatus(); // Refresh status
+        } else {
+            throw new Error('Generation failed');
+        }
     }
     
-    setupCrossTabSync() {
-        // Listen for storage changes (cross-tab communication)
-        window.addEventListener('storage', (e) => {
-            if (e.key === this.syncKey && e.newValue) {
-                const syncData = JSON.parse(e.newValue);
-                this.handleSyncUpdate(syncData);
+    async viewContent(contentType) {
+        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content/${contentType}`);
+        
+        if (response.ok) {
+            const content = await response.json();
+            this.showContentModal(contentType, content);
+        } else {
+            throw new Error('Failed to load content');
+        }
+    }
+    
+    async downloadContent(contentType) {
+        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content/${contentType}/download`);
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${contentType}-content.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            this.showNotification(`${contentType} content downloaded!`, 'success');
+        } else {
+            throw new Error('Download failed');
+        }
+    }
+    
+    async deleteContent(contentType) {
+        if (!confirm(`Are you sure you want to delete ${contentType} content? This cannot be undone.`)) {
+            return;
+        }
+        
+        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content/${contentType}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            this.showNotification(`${contentType} content deleted successfully!`, 'success');
+            this.loadContentStatus(); // Refresh status
+        } else {
+            throw new Error('Deletion failed');
+        }
+    }
+    
+    async loadContentStatus() {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content-status`);
+            if (response.ok) {
+                const status = await response.json();
+                this.updateButtonStates(status);
+            }
+        } catch (error) {
+            console.error('Failed to load content status:', error);
+        }
+    }
+    
+    updateButtonStates(status) {
+        Object.keys(status).forEach(contentType => {
+            const hasContent = status[contentType];
+            const container = document.querySelector(`[data-content-type="${contentType}"]`)?.parentElement;
+            
+            if (container) {
+                if (hasContent) {
+                    // Show view/download/delete buttons
+                    container.innerHTML = `
+                        <button class="btn btn-outline-primary btn-sm mb-2" data-action="view" data-content-type="${contentType}">
+                            <i class="fas fa-eye me-1"></i>View
+                        </button>
+                        <button class="btn btn-outline-success btn-sm mb-2" data-action="download" data-content-type="${contentType}">
+                            <i class="fas fa-download me-1"></i>Download
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" data-action="delete" data-content-type="${contentType}">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </button>
+                    `;
+                } else {
+                    // Show generate button
+                    container.innerHTML = `
+                        <button class="btn btn-primary btn-sm" data-action="generate" data-content-type="${contentType}">
+                            <i class="fas fa-plus me-1"></i>Generate ${contentType}
+                        </button>
+                    `;
+                }
             }
         });
-        
-        // Listen for custom sync events
-        window.addEventListener('conversationSync', (e) => {
-            this.handleSyncUpdate(e.detail);
-        });
     }
     
-    broadcastSync(data) {
-        // Dispatch custom event for same-tab communication
-        window.dispatchEvent(new CustomEvent('conversationSync', { detail: data }));
-    }
-    
-    handleSyncUpdate(syncData) {
-        if (!this.isMaster && syncData.timestamp > this.lastUpdateTime) {
-            this.conversationData = syncData.messages;
-            this.currentTopic = syncData.topic;
-            this.messageCount = syncData.messageCount;
-            this.lastUpdateTime = syncData.lastUpdate;
-            this.currentAgentIndex = syncData.agentIndex;
-            this.updateDisplay();
-            this.updateTopicDisplay();
-        }
-    }
-    
-    createLiveStatusBar() {
-        const existingBar = document.getElementById('live-status-bar');
-        if (existingBar) return;
-        
-        const statusBar = document.createElement('div');
-        statusBar.id = 'live-status-bar';
-        statusBar.className = 'alert alert-success d-flex align-items-center justify-content-between mb-3';
-        statusBar.style.cssText = `
-            border-left: 4px solid #28a745;
-            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
-            border-radius: 8px;
-            padding: 12px 16px;
-        `;
-        
-        statusBar.innerHTML = `
-            <div class="d-flex align-items-center">
-                <div class="status-indicator me-2"></div>
-                <span class="fw-bold text-success">LIVE NOW</span>
-                <span class="ms-2">- AI agents are actively discussing</span>
-                <span class="current-topic ms-2 badge bg-info"></span>
-            </div>
-            <div class="d-flex align-items-center">
-                <span class="badge bg-success me-2">4 AI agents online</span>
-                <small class="text-muted">Active now</small>
-            </div>
-        `;
-        
-        const conversationStream = document.getElementById('conversation-stream');
-        if (conversationStream) {
-            conversationStream.insertBefore(statusBar, conversationStream.firstChild);
-        }
-    }
-    
-    createCountdownTimer() {
-        const existingTimer = document.getElementById('next-message-countdown');
-        if (existingTimer) return;
-        
-        const timerContainer = document.createElement('div');
-        timerContainer.id = 'next-message-countdown';
-        timerContainer.className = 'alert alert-info d-flex align-items-center justify-content-between mb-3';
-        timerContainer.style.cssText = `
-            border-left: 4px solid #0d6efd;
-            background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
-            border-radius: 8px;
-            padding: 12px 16px;
-        `;
-        
-        timerContainer.innerHTML = `
-            <div class="d-flex align-items-center">
-                <i class="fas fa-clock me-2 text-primary"></i>
-                <span>Next AI conversation in <span id="countdown-timer" class="fw-bold text-primary">45</span> seconds</span>
-                <span class="ms-2 small text-muted">(<span id="message-counter">${this.messageCount}</span>/${this.maxMessagesPerRound} in current topic)</span>
-            </div>
-            <div class="progress" style="width: 200px; height: 6px;">
-                <div id="countdown-progress" class="progress-bar bg-primary" style="width: 100%; transition: width 1s linear;"></div>
-            </div>
-        `;
-        
-        const statusBar = document.getElementById('live-status-bar');
-        if (statusBar) {
-            statusBar.parentNode.insertBefore(timerContainer, statusBar.nextSibling);
-        }
-    }
-    
-    createActivityPulse() {
-        const existingPulse = document.querySelector('.activity-pulse');
-        if (existingPulse) return;
-        
-        const pulse = document.createElement('div');
-        pulse.className = 'activity-pulse';
-        document.body.appendChild(pulse);
-    }
-    
-    formatTime(date) {
-        return date.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-    
-    updateDisplay() {
-        const conversationStream = document.getElementById('conversation-stream');
-        if (!conversationStream) return;
-        
-        // Remove existing messages (keep status elements)
-        const existingMessages = conversationStream.querySelectorAll('.message-stream-item');
-        existingMessages.forEach(msg => msg.remove());
-        
-        // Add current messages
-        this.conversationData.forEach((message, index) => {
-            const messageElement = this.createMessageElement(message, index === 0);
-            
-            // Insert after status elements
-            const statusElements = conversationStream.querySelectorAll('#live-status-bar, #next-message-countdown, #typing-indicator');
-            const lastStatusElement = statusElements[statusElements.length - 1];
-            
-            if (lastStatusElement) {
-                conversationStream.insertBefore(messageElement, lastStatusElement.nextSibling);
-            } else {
-                conversationStream.appendChild(messageElement);
-            }
-        });
-        
-        // Update message counter
-        const messageCounter = document.getElementById('message-counter');
-        if (messageCounter) {
-            messageCounter.textContent = this.messageCount;
-        }
-    }
-    
-    createMessageElement(message, isNew = false) {
-        const agent = this.agents.find(a => a.id === message.agent_name) || this.agents[0];
-        const isServiceOnline = this.aiServicesStatus[agent.service];
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message-stream-item p-3 mb-3 border rounded ${isNew ? 'slide-up' : ''}`;
-        messageDiv.style.cssText = `
-            background: white;
-            border: 1px solid #e9ecef;
-            transition: all 0.3s ease;
-        `;
-        
-        messageDiv.innerHTML = `
-            <div class="d-flex align-items-start justify-content-between">
-                <div class="d-flex align-items-center mb-2">
-                    <div class="badge bg-${agent.color} me-2 position-relative">
-                        ${message.agent_name}
-                        <div class="online-indicator ${isServiceOnline ? 'online' : 'offline'}"></div>
-                    </div>
-                    <div>
-                        <h6 class="mb-0 text-${agent.color}">${message.agent_type}</h6>
-                        <small class="text-muted">${message.agent_name} AI Agent • Live Discussion</small>
+    showContentModal(contentType, content) {
+        // Create and show modal with content
+        const modalHTML = `
+            <div class="modal fade" id="content-modal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">${contentType} Content</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <pre>${JSON.stringify(content, null, 2)}</pre>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
                     </div>
                 </div>
-                <div class="d-flex align-items-center">
-                    <span class="text-muted me-2">${message.timestamp}</span>
-                    <span class="badge live-badge">LIVE</span>
-                </div>
-            </div>
-            <p class="mb-3">${message.message_content}</p>
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center text-muted">
-                    <i class="fas fa-link me-1"></i>
-                    <span class="me-2">Source Reference:</span>
-                    <a href="${message.source_url}" class="text-decoration-none me-2">${message.source_url}</a>
-                    <span class="badge bg-secondary">Perfect Roofing Team</span>
-                </div>
-                <button class="btn btn-outline-primary btn-sm investigation-btn" 
-                        onclick="window.conversationFeed.showInvestigation('${message.id}', '${message.message_content.replace(/'/g, "\\'")}', '${message.agent_type}')">
-                    <i class="fas fa-search me-1"></i>Short Investigation
-                </button>
             </div>
         `;
         
-        return messageDiv;
-    }
-    
-    triggerActivityPulse() {
-        const pulse = document.querySelector('.activity-pulse');
-        if (pulse) {
-            pulse.classList.remove('pulse-active');
-            setTimeout(() => {
-                pulse.classList.add('pulse-active');
-            }, 10);
+        // Remove existing modal
+        const existingModal = document.getElementById('content-modal');
+        if (existingModal) {
+            existingModal.remove();
         }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modal = new bootstrap.Modal(document.getElementById('content-modal'));
+        modal.show();
     }
     
-    initializeDashboard() {
-        // For dashboard pages, show historical conversations without live updates
-        console.log('Dashboard mode - showing historical conversations');
-        this.enhanceDashboardStyling();
-    }
-    
-    enhanceDashboardStyling() {
-        const style = document.createElement('style');
-        style.textContent = `
-            .conversation-card {
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-            .conversation-card:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            }
+    showNotification(message, type = 'info') {
+        const alertHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         `;
-        document.head.appendChild(style);
+        
+        // Find or create notification container
+        let container = document.querySelector('.notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'notification-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+        }
+        
+        container.insertAdjacentHTML('beforeend', alertHTML);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            const alerts = container.querySelectorAll('.alert');
+            if (alerts.length > 0) {
+                alerts[0].remove();
+            }
+        }, 5000);
     }
 }
 
-// Enhanced CSS Styles with Investigation Features
-const apiIntegratedWithInvestigationStyles = `
-<style>
-/* Live status indicators */
-.status-indicator {
-    width: 12px;
-    height: 12px;
-    background: #28a745;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-}
-
-.online-indicator {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 8px;
-    height: 8px;
-    border: 2px solid white;
-    border-radius: 50%;
-}
-
-.online-indicator.online {
-    background: #28a745;
-    animation: pulse 2s infinite;
-}
-
-.online-indicator.offline {
-    background: #dc3545;
-}
-
-.live-badge {
-    background: linear-gradient(45deg, #ff0000, #ff4444);
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: bold;
-    animation: pulse 2s infinite;
-}
-
-/* Investigation Button */
-.investigation-btn {
-    transition: all 0.3s ease;
-    border-radius: 20px;
-    font-size: 12px;
-    padding: 4px 12px;
-}
-
-.investigation-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
-}
-
-/* Investigation Modal */
-.investigation-summary {
-    line-height: 1.6;
-}
-
-.investigation-icon {
-    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.investigation-section {
-    padding: 15px;
-    background: rgba(248, 249, 250, 0.5);
-    border-radius: 8px;
-    border-left: 4px solid #0d6efd;
-}
-
-.section-title {
-    color: #0d6efd;
-    font-size: 1.1rem;
-    margin-bottom: 10px;
-}
-
-.section-content {
-    color: #495057;
-    margin-bottom: 0;
-}
-
-.investigation-meta {
-    background: rgba(13, 110, 253, 0.05);
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid rgba(13, 110, 253, 0.1);
-}
-
-.investigation-footer {
-    background: rgba(248, 249, 250, 0.8);
-    border-radius: 8px;
-    padding: 15px;
-}
-
-.blockquote-sm {
-    font-size: 0.9rem;
-    padding: 10px 15px;
-    background: white;
-    border-radius: 6px;
-    border-left: 3px solid #0d6efd;
-}
-
-.investigation-actions .btn {
-    border-radius: 20px;
-    font-size: 12px;
-}
-
-/* AI Services Status */
-.ai-services-status .service-status {
-    padding: 8px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-
-.ai-services-status .service-status.online {
-    background: rgba(40, 167, 69, 0.1);
-    border: 1px solid rgba(40, 167, 69, 0.3);
-}
-
-.ai-services-status .service-status.offline {
-    background: rgba(220, 53, 69, 0.1);
-    border: 1px solid rgba(220, 53, 69, 0.3);
-}
-
-/* Activity pulse */
-.activity-pulse {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 20px;
-    height: 20px;
-    background: #28a745;
-    border-radius: 50%;
-    opacity: 0;
-    pointer-events: none;
-    z-index: 1000;
-}
-
-.activity-pulse.pulse-active {
-    animation: activityPulse 2s ease-out;
-}
-
-@keyframes activityPulse {
-    0% {
-        transform: scale(0);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(4);
-        opacity: 0;
-    }
-}
-
-/* Animations */
-@keyframes pulse {
-    0% { 
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% { 
-        transform: scale(1.1);
-        opacity: 0.7;
-    }
-    100% { 
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.slide-up {
-    animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-    from { 
-        transform: translateY(20px); 
-        opacity: 0; 
-    }
-    to { 
-        transform: translateY(0); 
-        opacity: 1; 
-    }
-}
-
-/* Progress bar animation */
-.progress-bar {
-    transition: width 1s linear;
-}
-
-/* Message hover effects */
-.message-stream-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.message-stream-item:hover .investigation-btn {
-    background-color: #0d6efd;
-    color: white;
-    border-color: #0d6efd;
-}
-</style>
-`;
-
-// Initialize when DOM is ready
+// Initialize based on page type
 document.addEventListener('DOMContentLoaded', function() {
-    // Add enhanced styles
-    document.head.insertAdjacentHTML('beforeend', apiIntegratedWithInvestigationStyles);
+    console.log('[Main] DOM loaded, initializing systems...');
     
-    // Initialize API-integrated conversation feed with investigation feature
-    window.conversationFeed = new APIIntegratedConversationFeed();
+    // Initialize live conversation manager on all pages
+    window.liveConversationManager = new LiveConversationManager();
+    
+    // Initialize dashboard controls if on dashboard page
+    if (window.location.pathname.includes('/business/') || window.location.pathname.includes('dashboard')) {
+        window.dashboardControlsManager = new DashboardControlsManager();
+    }
+    
+    console.log('[Main] All systems initialized successfully');
 });
 
-// Export for manual initialization if needed
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = APIIntegratedConversationFeed;
-}
-
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (window.liveConversationManager) {
+        window.liveConversationManager.destroy();
+    }
+});
