@@ -16,3 +16,7 @@ pytz
 requests
 sift-stack-py
 trafilatura
+aiohttp
+flask-socketio
+schedule
+websockets

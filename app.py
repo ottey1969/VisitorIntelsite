@@ -4,6 +4,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_socketio import SocketIO
 
 # Set up logging for debugging
 logging.basicConfig(level=logging.DEBUG)
@@ -28,6 +29,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # initialize the app with the extension, flask-sqlalchemy >= 3.0.x
 db.init_app(app)
 
+# Initialize SocketIO for real-time updates
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 with app.app_context():
     # Make sure to import the models here or their tables won't be created
     import models  # noqa: F401
@@ -41,6 +45,15 @@ with app.app_context():
         logging.info("Auto-posting scheduler started")
     except Exception as e:
         logging.error(f"Failed to start auto-posting scheduler: {e}")
+    
+    # Start enhanced conversation system
+    try:
+        from enhanced_conversation_system import start_enhanced_system, setup_enhanced_socketio
+        setup_enhanced_socketio(socketio)
+        start_enhanced_system()
+        logging.info("Enhanced 4-API conversation system started")
+    except Exception as e:
+        logging.error(f"Failed to start enhanced conversation system: {e}")
     
     # Import routes after app and db are initialized
     import routes  # noqa: F401

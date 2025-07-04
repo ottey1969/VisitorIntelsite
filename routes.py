@@ -2186,6 +2186,25 @@ def api_live_conversation_latest_backend():
         }), 500
 
 
+# Enhanced 4-API Conversation System Routes
+@app.route('/api/enhanced-status')
+def enhanced_conversation_status():
+    """Get enhanced conversation system status"""
+    try:
+        from enhanced_conversation_system import get_enhanced_status
+        return jsonify(get_enhanced_status())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/countdown')
+def conversation_countdown():
+    """Get conversation countdown information"""
+    try:
+        from enhanced_conversation_system import get_countdown_info
+        return jsonify(get_countdown_info())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.errorhandler(500)
 def internal_error(error):
