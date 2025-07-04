@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}Upgrade to Monthly Subscription - {{ business.name }}{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<section class="bg-gradient-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-5 fw-bold mb-3">
+                    <i class="fas fa-rocket me-3"></i>Upgrade to Monthly Subscription
+                </h1>
+                <p class="lead mb-4">Save money and get predictable pricing with our monthly plans</p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ url_for('business_dashboard', business_id=business.id) }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-4 text-end">
+                <div class="current-plan-card bg-white bg-opacity-10 rounded-4 p-4">
+                    <h6 class="mb-2">Current Plan</h6>
+                    {% if business.subscription_type == 'credit' %}
+                    <div class="text-center">
+                        <h4 class="text-warning">Credit-Based</h4>
+                        <p class="mb-0">{{ business.credits_remaining }} credits remaining</p>
+                    </div>
+                    {% else %}
+                    <div class="text-center">
+                        <h4 class="text-success">{{ subscription_status.plan_name }}</h4>
+                        <p class="mb-0">${{ "%.2f"|format(subscription_status.plan_price) }}/month</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Savings Calculator Section -->
+{% if business.subscription_type == 'credit' %}
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="h3 fw-bold mb-3">See Your Potential Savings</h2>
+            <p class="text-muted">Compare credit costs vs monthly subscription pricing</p>
+        </div>
+        
+        <div class="row justify-content-center">
+            {% for plan in monthly_plans %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="savings-card card h-100 border-0 shadow-lg {% if plan.is_popular %}border-primary{% endif %}">
+                    {% if plan.is_popular %}
+                    <div class="card-header bg-primary text-white text-center py-2">
+                        <small class="fw-bold"><i class="fas fa-star me-1"></i>MOST POPULAR</small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card-body text-center p-4">
+                        <h4 class="fw-bold text-primary mb-2">{{ plan.name }}</h4>
+                        <div class="pricing-display mb-3">
+                            <h2 class="fw-bold text-dark">${{ "%.2f"|format(plan.price) }}</h2>
+                            <small class="text-muted">per month</small>
+                        </div>
+                        
+                        <div class="conversations-included mb-3">
+                            <h5 class="text-success fw-bold">{{ plan.conversations }}</h5>
+                            <small class="text-muted">AI conversations included</small>
+                        </div>
+                        
+                        <!-- Savings Calculation -->
+                        {% set savings = savings_calculations[plan.id] %}
+                        {% if savings %}
+                        <div class="savings-highlight bg-warning bg-opacity-10 rounded-3 p-3 mb-3">
+                            <h6 class="text-warning fw-bold mb-1">
+                                <i class="fas fa-piggy-bank me-1"></i>Save ${{ "%.2f"|format(savings.monthly_savings) }}/month
+                            </h6>
+                            <small class="text-muted">vs credit equivalent ({{ savings.savings_percentage }}% savings)</small>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Features List -->
+                        <ul class="list-unstyled text-start mb-4">
+                            {% for feature in plan.features %}
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>{{ feature }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        
+                        <form method="POST" action="{{ url_for('upgrade_subscription', business_id=business.id) }}">
+                            <input type="hidden" name="plan_type" value="{{ plan.id }}">
+                            <button type="submit" class="btn {% if plan.is_popular %}btn-primary{% else %}btn-outline-primary{% endif %} btn-lg w-100">
+                                <i class="fas fa-arrow-up me-2"></i>Upgrade Now
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Current Subscription Management -->
+{% if business.subscription_type != 'credit' %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="subscription-management-card card border-0 shadow-lg">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calendar-check me-2"></i>Subscription Management
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-primary mb-2">Current Plan</h6>
+                                <p class="mb-1">{{ subscription_status.plan_name }}</p>
+                                <p class="text-muted mb-0">${{ "%.2f"|format(subscription_status.plan_price) }}/month</p>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-primary mb-2">Usage This Month</h6>
+                                {% if subscription_status.conversations_remaining == 'unlimited' %}
+                                <p class="mb-1">{{ subscription_status.conversations_used }} conversations used</p>
+                                <p class="text-success mb-0">Unlimited remaining</p>
+                                {% else %}
+                                <p class="mb-1">{{ subscription_status.conversations_used }}/{{ subscription_status.conversations_limit }} used</p>
+                                <p class="text-muted mb-0">{{ subscription_status.conversations_remaining }} remaining</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-primary mb-2">Billing Cycle</h6>
+                                <p class="mb-1">Next billing: {{ subscription_status.billing_cycle_end.strftime('%B %d, %Y') }}</p>
+                                <p class="text-muted mb-0">{{ subscription_status.days_until_renewal }} days remaining</p>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-primary mb-2">Auto-Renewal</h6>
+                                <p class="mb-2">
+                                    {% if subscription_status.auto_renew %}
+                                    <span class="text-success"><i class="fas fa-check-circle me-1"></i>Enabled</span>
+                                    {% else %}
+                                    <span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Disabled</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Upgrade Options -->
+                        {% if subscription_status.plan_name != 'Enterprise Monthly' %}
+                        <hr class="my-4">
+                        <div class="text-center">
+                            <h6 class="fw-bold mb-3">Want to upgrade?</h6>
+                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                {% for plan in monthly_plans %}
+                                {% if plan.price > subscription_status.plan_price %}
+                                <form method="POST" action="{{ url_for('upgrade_subscription', business_id=business.id) }}" class="d-inline">
+                                    <input type="hidden" name="plan_type" value="{{ plan.id }}">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-arrow-up me-1"></i>Upgrade to {{ plan.name }}
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Benefits Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="h3 fw-bold mb-3">Why Choose Monthly Subscriptions?</h2>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="benefit-card text-center p-4">
+                    <div class="benefit-icon bg-primary bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-calculator text-primary fa-2x"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Predictable Costs</h6>
+                    <p class="text-muted mb-0">Fixed monthly pricing makes budgeting easy</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="benefit-card text-center p-4">
+                    <div class="benefit-icon bg-success bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-piggy-bank text-success fa-2x"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Better Value</h6>
+                    <p class="text-muted mb-0">Save 30-50% compared to credit pricing</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="benefit-card text-center p-4">
+                    <div class="benefit-icon bg-info bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-brain text-info fa-2x"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Smart Conversations</h6>
+                    <p class="text-muted mb-0">AI learns from your history to avoid repetition</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="benefit-card text-center p-4">
+                    <div class="benefit-icon bg-warning bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-headset text-warning fa-2x"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Priority Support</h6>
+                    <p class="text-muted mb-0">Get faster responses and dedicated assistance</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="text-center mb-5">
+                    <h2 class="h3 fw-bold mb-3">Frequently Asked Questions</h2>
+                </div>
+                
+                <div class="accordion" id="subscriptionFAQ">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                Can I switch back to credits later?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#subscriptionFAQ">
+                            <div class="accordion-body">
+                                Yes! You can switch between credit-based and monthly subscription billing at any time. Your current conversations and data remain intact.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                What happens to unused conversations?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#subscriptionFAQ">
+                            <div class="accordion-body">
+                                Unused conversations don't roll over to the next month. Each billing cycle starts fresh with your full allowance.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                How does the AI avoid repetitive topics?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#subscriptionFAQ">
+                            <div class="accordion-body">
+                                Our Conversation Intelligence system analyzes all your previous conversations to suggest fresh, relevant topics that build on your business expertise without repeating previous discussions.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

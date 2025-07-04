@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ business.name }} - {{ page_type.title().replace('-', ' ') }}</title>
+    <meta name="description" content="{{ business.name }} {{ page_type.replace('-', ' ') }} - Comprehensive information and expert insights.">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-comments me-2"></i>AI Business Hub
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('business_ecosystem_home', business_name=business.name.lower().replace(' ', '-')) }}">
+                    <i class="fas fa-home me-1"></i>{{ business.name }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <section class="bg-light py-4">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="h2 mb-2">{{ business.name }} - {{ page_type.title().replace('-', ' ') }}</h1>
+                    <p class="text-muted mb-0">
+                        {% if page_type == 'faq' %}
+                            Comprehensive answers to frequently asked questions
+                        {% elif page_type == 'local' %}
+                            Local service areas and location-specific information
+                        {% elif page_type == 'voice-search' %}
+                            Voice search optimized content for natural queries
+                        {% elif page_type == 'knowledge-base' %}
+                            Expert knowledge and industry insights
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <span class="badge bg-success fs-6">{{ pages|length }} Pages Available</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Content Grid -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row g-4">
+                {% for page in pages %}
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-header 
+                            {% if page_type == 'faq' %}bg-primary{% endif %}
+                            {% if page_type == 'local' %}bg-info{% endif %}
+                            {% if page_type == 'voice-search' %}bg-warning{% endif %}
+                            {% if page_type == 'knowledge-base' %}bg-dark{% endif %}
+                            text-white">
+                            <h6 class="mb-0">
+                                {% if page_type == 'faq' %}<i class="fas fa-question-circle me-2"></i>{% endif %}
+                                {% if page_type == 'local' %}<i class="fas fa-map-marker-alt me-2"></i>{% endif %}
+                                {% if page_type == 'voice-search' %}<i class="fas fa-microphone me-2"></i>{% endif %}
+                                {% if page_type == 'knowledge-base' %}<i class="fas fa-book me-2"></i>{% endif %}
+                                {{ page.title }}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">{{ page.meta_description }}</p>
+                            <div class="keywords">
+                                {% for keyword in page.keywords[:3] %}
+                                <span class="badge bg-light text-dark me-1">{{ keyword }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="{{ url_for('business_' + page_type.replace('-', '_'), business_name=business.name.lower().replace(' ', '-'), **{page_type.replace('-', '_') + '_slug': page.slug}) }}" 
+                               class="btn 
+                                {% if page_type == 'faq' %}btn-primary{% endif %}
+                                {% if page_type == 'local' %}btn-info{% endif %}
+                                {% if page_type == 'voice-search' %}btn-warning{% endif %}
+                                {% if page_type == 'knowledge-base' %}btn-dark{% endif %}
+                                w-100">
+                                <i class="fas fa-arrow-right me-2"></i>Read More
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Back to Ecosystem -->
+    <section class="bg-light py-4">
+        <div class="container text-center">
+            <a href="{{ url_for('business_ecosystem_home', business_name=business.name.lower().replace(' ', '-')) }}" 
+               class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-arrow-left me-2"></i>Back to {{ business.name }} Ecosystem
+            </a>
+        </div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

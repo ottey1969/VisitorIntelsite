@@ -1,0 +1,838 @@
+{% extends "base.html" %}
+
+{% block title %}{{ business.name }} - AI Conversation Dashboard{% endblock %}
+
+{% block content %}
+<!-- Business Header -->
+<section class="bg-gradient-primary text-white py-4">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="h2 fw-bold mb-2">
+                    <i class="fas fa-building me-2"></i>{{ business.name }}
+                </h1>
+                <p class="mb-3 opacity-75">{{ business.description }}</p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ url_for('all_conversations') }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-list me-1"></i>View All Conversations
+                    </a>
+                    {% if business.subscription_type == 'credit' %}
+                    <a href="{{ url_for('subscription_upgrade_page', business_id=business.id) }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-rocket me-1"></i>Upgrade to Monthly
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('social_media_setup', business_id=business.id) }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-share-alt me-1"></i>Auto-Post Setup
+                    </a>
+                    <a href="{{ url_for('subscription_upgrade_page', business_id=business.id) }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-cog me-1"></i>Manage Subscription
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-home me-1"></i>Back to Home
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                {% if business.is_unlimited %}
+                <span class="badge bg-warning fs-6 px-3 py-2">
+                    <i class="fas fa-infinity me-1"></i>UNLIMITED CREDITS
+                </span>
+                {% else %}
+                <span class="badge bg-success fs-6 px-3 py-2">
+                    <i class="fas fa-coins me-1"></i>{{ business.credits_remaining }} Credits
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Dashboard Stats -->
+<section class="py-4">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-comments text-primary fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-primary">{{ conversations|length }}</h3>
+                    <p class="text-muted mb-0">Total Conversations</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-eye text-success fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-success">
+                        {% if conversations %}{{ conversations|length * 16 }}{% else %}0{% endif %}
+                    </h3>
+                    <p class="text-muted mb-0">Total Messages</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-share-alt text-warning fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-warning">1</h3>
+                    <p class="text-muted mb-0">Share URL</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card bg-white rounded-3 shadow-sm p-4 text-center">
+                    <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-3 mx-auto mb-3">
+                        <i class="fas fa-coins text-info fa-2x"></i>
+                    </div>
+                    <h3 class="fw-bold text-info">
+                        {% set total_credits = conversations|length %}
+                        {{ total_credits or 0 }}
+                    </h3>
+                    <p class="text-muted mb-0">Credits Used</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Enhanced Countdown Timer -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div id="enhanced-countdown" class="mb-4"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Start New Conversation -->
+<section class="py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                    <h4 class="fw-bold mb-3">
+                        <i class="fas fa-plus-circle text-primary me-2"></i>Start New AI Conversation
+                    </h4>
+                    
+                    <form method="POST" action="{{ url_for('start_conversation') }}">
+                        <input type="hidden" name="business_id" value="{{ business.id }}">
+                        
+                        <div class="mb-3">
+                            <label for="topic" class="form-label fw-bold">Conversation Topic</label>
+                            <input type="text" class="form-control form-control-lg" id="topic" name="topic" 
+                                   placeholder="e.g., Emergency Roof Repair Services, Quality Materials and Experience" required>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Describe the business aspect or service you want the AI agents to discuss
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="conversation-cost">
+                                <small class="text-muted">
+                                    <i class="fas fa-calculator me-1"></i>
+                                    Cost: <strong>1 Credit</strong> (16 AI messages from 4 different agents)
+                                </small>
+                            </div>
+                            
+                            <div class="d-flex gap-2 justify-content-center">
+                                {% if business.is_unlimited or business.credits_remaining > 0 %}
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-rocket me-2"></i>Generate Conversation
+                                </button>
+                                {% else %}
+                                <button type="button" class="btn btn-outline-danger btn-lg" disabled>
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Insufficient Credits
+                                </button>
+                                {% endif %}
+                                
+                                {% if conversations %}
+                                <a href="/public/conversation/{{ conversations[0].id }}" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-eye me-2"></i>View Latest
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="share-url-card bg-gradient-primary text-white rounded-4 p-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="fas fa-share-alt me-2"></i>Your Showcase URL
+                    </h5>
+                    <div class="bg-white bg-opacity-20 rounded-3 p-3 mb-3">
+                        <code class="text-dark small">{{ business.share_url or 'Generating...' }}</code>
+                    </div>
+                    <button class="btn btn-warning btn-sm w-100" onclick="copyShareUrl()">
+                        <i class="fas fa-copy me-1"></i>Copy URL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Content Ecosystem (Enterprise Features) -->
+<section class="py-4">
+    <div class="container">
+        <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+            <h4 class="fw-bold mb-3">
+                <i class="fas fa-globe text-success me-2"></i>Complete Content Ecosystem
+                <span class="badge bg-success ms-2">Enterprise</span>
+            </h4>
+            
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-question-circle text-primary fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">FAQ Pages</h6>
+                        <p class="small text-muted text-center mb-3">AI-generated FAQ content targeting search queries</p>
+                        <button class="btn btn-outline-primary btn-sm w-100" onclick="generateFAQ()">
+                            <i class="fas fa-magic me-1"></i>Generate FAQ
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-map-marker-alt text-info fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">Local SEO</h6>
+                        <p class="small text-muted text-center mb-3">Location-specific pages for better local search</p>
+                        <button class="btn btn-outline-info btn-sm w-100" onclick="generateLocalSEO()">
+                            <i class="fas fa-location-arrow me-1"></i>Generate Local
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-microphone text-warning fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">Voice Search</h6>
+                        <p class="small text-muted text-center mb-3">Content optimized for voice search queries</p>
+                        <button class="btn btn-outline-warning btn-sm w-100" onclick="generateVoiceSearch()">
+                            <i class="fas fa-volume-up me-1"></i>Optimize Voice
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="ecosystem-card border rounded-3 p-3 h-100">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-book text-success fa-2x"></i>
+                        </div>
+                        <h6 class="fw-bold text-center">Knowledge Base</h6>
+                        <p class="small text-muted text-center mb-3">Industry expertise articles and guides</p>
+                        <button class="btn btn-outline-success btn-sm w-100" onclick="generateKnowledgeBase()">
+                            <i class="fas fa-brain me-1"></i>Build Knowledge
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            {% if business.plan_type != 'enterprise' %}
+            <div class="text-center mt-4">
+                <div class="alert alert-info d-inline-block">
+                    <i class="fas fa-crown me-2"></i>
+                    <strong>Upgrade to Enterprise</strong> to unlock the complete content ecosystem
+                    <a href="#" class="btn btn-info btn-sm ms-2">Upgrade Now</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Live Conversation Feed -->
+<section class="py-4 bg-light">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold mb-0">
+                <i class="fas fa-satellite-dish text-success me-2"></i>Live Conversation Feed
+            </h4>
+            <div class="d-flex gap-2">
+                <span id="status-indicator" class="badge bg-success">
+                    <i class="fas fa-circle me-1"></i>LIVE
+                </span>
+                <button class="btn btn-outline-success btn-sm" onclick="refreshConversation()">
+                    <i class="fas fa-sync me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0" id="conversation-topic">Loading conversation...</h5>
+                                <small class="text-muted">Real-time AI discussion about your business</small>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">Business: {{ business.business_name }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                        <div id="live-conversation-messages" class="conversation-messages">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Loading live conversation...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>Business Analytics
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Total Conversations:</span>
+                                <strong>{{ conversations|length }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Total Messages:</span>
+                                <strong id="total-messages">{{ conversations|length * 16 }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Credits Used:</span>
+                                <strong>{{ conversations|length }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Live Status:</span>
+                                <span class="badge bg-success">Active</span>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="text-center">
+                            <a href="{{ url_for('all_conversations') }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="fas fa-eye me-1"></i>View All Conversations
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Conversations History -->
+<section class="py-4">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold mb-0">
+                <i class="fas fa-history text-primary me-2"></i>Conversation History
+            </h4>
+            {% if not business.is_unlimited and business.credits_remaining == 0 %}
+            <a href="#credit-packages" class="btn btn-outline-primary">
+                <i class="fas fa-plus me-1"></i>Buy Credits
+            </a>
+            {% endif %}
+        </div>
+        
+        {% if conversations %}
+        <div class="row g-4">
+            {% for conversation in conversations %}
+            <div class="col-lg-6">
+                <div class="conversation-history-card bg-white rounded-4 shadow-sm">
+                    <div class="card-header bg-light p-3 rounded-top-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="fw-bold mb-1">{{ conversation.topic }}</h6>
+                            <span class="badge bg-{{ 'success' if conversation.status == 'completed' else 'warning' }}">
+                                {{ conversation.status.title() }}
+                            </span>
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>{{ conversation.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        </small>
+                    </div>
+                    
+                    <div class="card-body p-3">
+                        {% if conversation.messages %}
+                        <div class="messages-preview">
+                            {% for message in conversation.messages[:3] %}
+                            <div class="message-preview mb-2">
+                                <div class="d-flex align-items-start">
+                                    <div class="avatar bg-{{ 'primary' if message.ai_agent_type == 'openai' else 'success' }} bg-opacity-10 rounded-circle p-1 me-2">
+                                        <i class="fas fa-robot text-{{ 'primary' if message.ai_agent_type == 'openai' else 'success' }} small"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold small text-muted">{{ message.ai_agent_name }}</div>
+                                        <p class="mb-0 small">{{ message.content[:100] }}{% if message.content|length > 100 %}...{% endif %}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            
+                            {% if conversation.messages|length > 3 %}
+                            <div class="text-center">
+                                <small class="text-muted">+ {{ conversation.messages|length - 3 }} more messages</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center mb-0">No messages yet</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-footer bg-light p-3 rounded-bottom-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-comments me-1"></i>{{ conversation.messages|length }} messages
+                            </small>
+                            <span class="badge bg-info">
+                                <i class="fas fa-coins me-1"></i>{{ conversation.credits_used }} credit
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-comments text-muted" style="font-size: 4rem; opacity: 0.3;"></i>
+            </div>
+            <h5 class="text-muted mb-3">No conversations yet</h5>
+            <p class="text-muted">Start your first AI conversation to begin building your business showcase.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Credit Packages (if needed) -->
+{% if not business.is_unlimited %}
+<section id="credit-packages" class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h3 class="fw-bold mb-3">Purchase Credits</h3>
+            <p class="text-muted">Choose a credit package to continue generating AI conversations</p>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            {% for package in credit_packages %}
+            <div class="col-lg-3 col-md-6">
+                <div class="pricing-card bg-white rounded-4 shadow-sm text-center h-100 {{ 'border-primary border-2' if package.is_popular else '' }}">
+                    {% if package.is_popular %}
+                    <div class="popular-badge bg-primary text-white px-3 py-1 rounded-bottom-3">
+                        <small class="fw-bold">RECOMMENDED</small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">{{ package.name }}</h5>
+                        <div class="price-display mb-3">
+                            <span class="h3 fw-bold text-primary">${{ "%.0f"|format(package.price) }}</span>
+                            <div class="text-muted small">{{ package.credits }} Credits</div>
+                        </div>
+                        
+                        <p class="text-muted small mb-4">{{ package.description }}</p>
+                        
+                        <ul class="list-unstyled text-start small">
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>{{ package.credits }} conversations
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>{{ package.credits * 16 }} AI messages
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>Public SEO URLs
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card-footer bg-light p-3 rounded-bottom-4">
+                        <form method="POST" action="{{ url_for('purchase_credits') }}">
+                            <input type="hidden" name="business_id" value="{{ business.id }}">
+                            <input type="hidden" name="package_id" value="{{ package.id }}">
+                            <button type="submit" class="btn btn-{{ 'primary' if package.is_popular else 'outline-primary' }} w-100">
+                                <i class="fab fa-paypal me-1"></i>Buy Now
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard_controls.js') }}"></script>
+<script>
+function copyShareUrl() {
+    const url = '{{ business.share_url or "" }}';
+    if (!url) {
+        alert('Showcase URL is being generated. Please refresh the page.');
+        return;
+    }
+    navigator.clipboard.writeText(url).then(function() {
+        // Show success feedback
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        button.classList.remove('btn-warning');
+        button.classList.add('btn-success');
+        
+        setTimeout(function() {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-warning');
+        }, 2000);
+    });
+}
+
+// Content Ecosystem Functions
+function generateFAQ() {
+    showEcosystemModal('FAQ Pages', 'Generating AI-powered FAQ content targeting search queries...');
+    // Implement FAQ generation
+}
+
+function generateLocalSEO() {
+    showEcosystemModal('Local SEO', 'Creating location-specific pages for better local search visibility...');
+    // Implement Local SEO generation
+}
+
+function generateVoiceSearch() {
+    showEcosystemModal('Voice Search', 'Optimizing content for voice search queries and featured snippets...');
+    // Implement Voice Search optimization
+}
+
+function generateKnowledgeBase() {
+    showEcosystemModal('Knowledge Base', 'Building industry expertise articles and comprehensive guides...');
+    // Implement Knowledge Base generation
+}
+
+function showEcosystemModal(title, message) {
+    // Create modal for showing progress
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div class="modal fade show" style="display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Generate ${title}</h5>
+                    </div>
+                    <div class="modal-body text-center">
+                        <div class="spinner-border text-primary mb-3"></div>
+                        <p>${message}</p>
+                        <div class="alert alert-info">
+                            <strong>Enterprise Feature</strong><br>
+                            This will be available in the next update for Enterprise customers.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal').parentElement.remove()">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Business-specific live conversation feed
+const businessId = {{ business.id }};
+let isPolling = true;
+let investigationModal = null;
+
+// Load live conversation for this specific business
+async function loadLiveConversation() {
+    try {
+        const response = await fetch(`/api/live-conversation/${businessId}`);
+        const data = await response.json();
+        
+        if (data.success && data.messages) {
+            displayConversationMessages(data.messages, data.topic);
+            updateAnalytics(data);
+        } else {
+            displayError('No conversation data available for this business yet.');
+        }
+    } catch (error) {
+        console.error('Error loading conversation:', error);
+        displayError('Failed to load conversation data.');
+    }
+}
+
+// Display conversation messages with investigation buttons
+function displayConversationMessages(messages, topic) {
+    const container = document.getElementById('live-conversation-messages');
+    const topicElement = document.getElementById('conversation-topic');
+    
+    if (topicElement) {
+        topicElement.textContent = topic || 'Business Discussion';
+    }
+    
+    if (!messages || messages.length === 0) {
+        container.innerHTML = '<div class="text-center py-4"><p class="text-muted">No messages available</p></div>';
+        return;
+    }
+    
+    let html = '';
+    messages.forEach((message, index) => {
+        const agentColors = {
+            'Business AI Assistant': 'primary',
+            'SEO AI Specialist': 'success', 
+            'Customer Service AI': 'info',
+            'Marketing AI Expert': 'warning'
+        };
+        
+        const agentColor = agentColors[message.agent_type] || 'secondary';
+        
+        html += `
+            <div class="message-item mb-3 fade-in" style="animation-delay: ${index * 0.1}s;">
+                <div class="d-flex align-items-start">
+                    <div class="avatar bg-${agentColor} bg-opacity-10 rounded-circle p-2 me-3">
+                        <i class="fas fa-robot text-${agentColor}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="fw-bold text-${agentColor}">${message.agent_name}</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <small class="text-muted">${message.timestamp}</small>
+                                <button class="btn btn-outline-primary btn-sm" onclick="investigateMessage(${message.id}, '${message.message_content.replace(/'/g, "\\'")}', '${message.agent_type}', '${topic}')">
+                                    <i class="fas fa-search me-1"></i>Investigate
+                                </button>
+                            </div>
+                        </div>
+                        <span class="badge bg-${agentColor} bg-opacity-10 text-${agentColor} small mb-2">${message.agent_type}</span>
+                        <p class="mb-0">${message.message_content}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
+}
+
+// Investigation functionality for messages
+async function investigateMessage(messageId, messageContent, agentType, topic) {
+    try {
+        showInvestigationModal(messageId, 'Generating investigation...', []);
+        
+        const response = await fetch('/api/investigation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                messageId: messageId,
+                messageContent: messageContent,
+                agentType: agentType,
+                topic: topic
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            updateInvestigationModal(data);
+        } else {
+            updateInvestigationModal({
+                title: 'Investigation Failed',
+                sections: [{ title: 'Error', content: data.error || 'Unable to generate investigation' }],
+                confidence: 0
+            });
+        }
+    } catch (error) {
+        console.error('Investigation error:', error);
+        updateInvestigationModal({
+            title: 'Investigation Error',
+            sections: [{ title: 'Error', content: 'Failed to connect to investigation service' }],
+            confidence: 0
+        });
+    }
+}
+
+// Show investigation modal
+function showInvestigationModal(messageId, title, sections) {
+    const modal = document.getElementById('investigationModal');
+    if (modal) {
+        modal.remove();
+    }
+    
+    const modalHtml = `
+        <div class="modal fade" id="investigationModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-search me-2"></i>Message Investigation
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="investigation-content">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">${title}</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="downloadInvestigation()">
+                            <i class="fas fa-download me-1"></i>Download Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    investigationModal = new bootstrap.Modal(document.getElementById('investigationModal'));
+    investigationModal.show();
+}
+
+// Update investigation modal with results
+function updateInvestigationModal(data) {
+    const content = document.getElementById('investigation-content');
+    if (!content) return;
+    
+    let html = `
+        <div class="investigation-report">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>${data.title}</h5>
+                <span class="badge bg-success">${data.confidence}% Confidence</span>
+            </div>
+    `;
+    
+    if (data.sections && data.sections.length > 0) {
+        data.sections.forEach(section => {
+            html += `
+                <div class="investigation-section mb-3">
+                    <h6 class="text-primary">${section.title}</h6>
+                    <p>${section.content}</p>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    content.innerHTML = html;
+}
+
+// Download investigation report
+function downloadInvestigation() {
+    const content = document.getElementById('investigation-content');
+    if (!content) return;
+    
+    const report = content.innerText;
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `investigation-report-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Display error message
+function displayError(message) {
+    const container = document.getElementById('live-conversation-messages');
+    container.innerHTML = `
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+}
+
+// Update analytics data
+function updateAnalytics(data) {
+    const totalMessages = document.getElementById('total-messages');
+    if (totalMessages && data.messageCount) {
+        totalMessages.textContent = data.messageCount;
+    }
+}
+
+// Refresh conversation manually
+function refreshConversation() {
+    const statusIndicator = document.getElementById('status-indicator');
+    statusIndicator.innerHTML = '<i class="fas fa-sync fa-spin me-1"></i>REFRESHING';
+    statusIndicator.className = 'badge bg-warning';
+    
+    setTimeout(() => {
+        loadLiveConversation();
+        statusIndicator.innerHTML = '<i class="fas fa-circle me-1"></i>LIVE';
+        statusIndicator.className = 'badge bg-success';
+    }, 1000);
+}
+
+// Auto-polling for live updates
+function startPolling() {
+    if (!isPolling) return;
+    
+    setTimeout(() => {
+        loadLiveConversation();
+        startPolling();
+    }, 30000); // Poll every 30 seconds
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadLiveConversation();
+    startPolling();
+});
+
+// CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .conversation-messages {
+        scroll-behavior: smooth;
+    }
+    
+    .message-item:hover {
+        background-color: rgba(0,0,0,0.02);
+        border-radius: 8px;
+        padding: 8px;
+        margin: -8px;
+        transition: all 0.2s ease;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

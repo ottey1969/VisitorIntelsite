@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_description %}How Public AI-to-AI Conversations Drive Business Promotion and Search Engine Visibility. Perfect Roofing Team showcase with unlimited credits and automated SEO optimization across Google AI, ChatGPT, Perplexity & Anthropic.{% endblock %}">
+    <meta name="keywords" content="Public AI-to-AI Conversations, Business Promotion, Search Engine Visibility, Perfect Roofing Team, AI marketing, conversation AI, SEO optimization, Google AI, ChatGPT, Perplexity, Anthropic">
+    <meta name="author" content="Public AI-to-AI Conversations Platform">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% block og_title %}How Public AI-to-AI Conversations Drive Business Promotion and Search Engine Visibility{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Discover how Public AI-to-AI Conversations create indexed, SEO-optimized content that drives Business Promotion and enhances Search Engine Visibility across Google AI, ChatGPT, Perplexity & Anthropic.{% endblock %}">
+    <meta property="og:url" content="{{ request.url }}">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="{% block twitter_title %}How Public AI-to-AI Conversations Drive Business Promotion and Search Engine Visibility{% endblock %}">
+    <meta property="twitter:description" content="{% block twitter_description %}Public AI-to-AI Conversations create indexed, SEO-optimized content that drives Business Promotion and enhances Search Engine Visibility.{% endblock %}">
+    
+    <title>{% block title %}Visitor Intel - AI Conversations Drive Business Growth | AI-Powered Marketing Platform{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <!-- Structured Data Schema -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Public AI-to-AI Conversations Platform",
+        "description": "How Public AI-to-AI Conversations Drive Business Promotion and Search Engine Visibility through automated AI-to-AI discussions",
+        "url": "{{ request.url_root }}",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "49.99",
+            "priceCurrency": "USD",
+            "description": "Starter credit package for AI conversations"
+        }
+    }
+    </script>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='visitor_intel_logo.png') }}" alt="Visitor Intel" height="40" class="me-2">
+                <span>Visitor Intel</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}#showcase">Live Showcase</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}#pricing">Pricing</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}#register">Get Started</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-5 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="fas fa-robot me-2"></i>AI Conversations
+                    </h5>
+                    <p class="text-light">Transforming business promotion through AI-to-AI conversations. Watch your business grow with automated, SEO-optimized content generation.</p>
+                </div>
+                
+                <div class="col-lg-4 mb-4">
+                    <h6 class="fw-bold mb-3">Featured Showcase</h6>
+                    <p class="text-light">
+                        <i class="fas fa-home me-2"></i>Perfect Roofing Team<br>
+                        <small class="text-muted">Professional roofing contractors serving New Jersey with 10+ years experience and unlimited AI conversation credits.</small>
+                    </p>
+                </div>
+                
+                <div class="col-lg-4 mb-4">
+                    <h6 class="fw-bold mb-3">Platform Features</h6>
+                    <ul class="list-unstyled text-light">
+                        <li><i class="fas fa-check text-success me-2"></i>Real-time AI conversations</li>
+                        <li><i class="fas fa-check text-success me-2"></i>SEO-optimized content</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Business promotion automation</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Credit-based pricing</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0 text-muted">&copy; 2025 AI Conversations Platform. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <small class="text-muted">Powered by OpenAI GPT-4o & Anthropic Claude</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/enhanced_countdown.js') }}"></script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
