@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Integration Test - Visitor Intel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-vial me-2"></i>
+                            API Integration Test Page
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- API Status Test -->
+                            <div class="col-md-6 mb-4">
+                                <div class="test-section">
+                                    <h5>
+                                        <i class="fas fa-heartbeat me-2 text-success"></i>
+                                        API Status Check
+                                    </h5>
+                                    <button class="btn btn-outline-primary" onclick="testAPIStatus()">
+                                        Test API Status
+                                    </button>
+                                    <div id="api-status-result" class="mt-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Live Conversation Test -->
+                            <div class="col-md-6 mb-4">
+                                <div class="test-section">
+                                    <h5>
+                                        <i class="fas fa-comments me-2 text-info"></i>
+                                        Live Conversation Data
+                                    </h5>
+                                    <button class="btn btn-outline-info" onclick="testLiveConversation()">
+                                        Load Conversation
+                                    </button>
+                                    <div id="live-conversation-result" class="mt-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Latest Message Test -->
+                            <div class="col-md-6 mb-4">
+                                <div class="test-section">
+                                    <h5>
+                                        <i class="fas fa-clock me-2 text-warning"></i>
+                                        Latest Message
+                                    </h5>
+                                    <button class="btn btn-outline-warning" onclick="testLatestMessage()">
+                                        Get Latest Message
+                                    </button>
+                                    <div id="latest-message-result" class="mt-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Investigation Test -->
+                            <div class="col-md-6 mb-4">
+                                <div class="test-section">
+                                    <h5>
+                                        <i class="fas fa-search me-2 text-danger"></i>
+                                        Investigation API
+                                    </h5>
+                                    <button class="btn btn-outline-danger" onclick="testInvestigation()">
+                                        Generate Investigation
+                                    </button>
+                                    <div id="investigation-result" class="mt-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Topic Generation Test -->
+                            <div class="col-md-12 mb-4">
+                                <div class="test-section">
+                                    <h5>
+                                        <i class="fas fa-lightbulb me-2 text-success"></i>
+                                        Topic Generation
+                                    </h5>
+                                    <button class="btn btn-outline-success" onclick="testTopicGeneration()">
+                                        Generate New Topic
+                                    </button>
+                                    <div id="topic-generation-result" class="mt-3"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-top">
+                            <h5>Test Results Summary</h5>
+                            <div id="test-summary" class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Click the test buttons above to verify API functionality.
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h5>Live Integration Demo</h5>
+                            <p class="text-muted">After testing the APIs, visit the <a href="/" class="text-primary">homepage</a> to see the live conversation feed with investigation features.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let testResults = {
+            apiStatus: false,
+            liveConversation: false,
+            latestMessage: false,
+            investigation: false,
+            topicGeneration: false
+        };
+
+        async function testAPIStatus() {
+            const resultDiv = document.getElementById('api-status-result');
+            resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Testing...';
+            
+            try {
+                const response = await fetch('/api-status');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    testResults.apiStatus = true;
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>API Status: Working
+                            <ul class="mb-0 mt-2">
+                                <li>OpenAI: ${data.openai ? '✅' : '❌'}</li>
+                                <li>Anthropic: ${data.anthropic ? '✅' : '❌'}</li>
+                                <li>Perplexity: ${data.perplexity ? '✅' : '❌'}</li>
+                                <li>Gemini: ${data.gemini ? '✅' : '❌'}</li>
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('API Status check failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>Error: ${error.message}
+                    </div>
+                `;
+            }
+            updateTestSummary();
+        }
+
+        async function testLiveConversation() {
+            const resultDiv = document.getElementById('live-conversation-result');
+            resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Loading...';
+            
+            try {
+                const response = await fetch('/api/live-conversation');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    testResults.liveConversation = true;
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>Live Conversation: Working
+                            <ul class="mb-0 mt-2">
+                                <li>Topic: ${data.topic}</li>
+                                <li>Messages: ${data.messageCount}</li>
+                                <li>Business: ${data.business?.name || 'N/A'}</li>
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Live conversation API failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>Error: ${error.message}
+                    </div>
+                `;
+            }
+            updateTestSummary();
+        }
+
+        async function testLatestMessage() {
+            const resultDiv = document.getElementById('latest-message-result');
+            resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Loading...';
+            
+            try {
+                const response = await fetch('/api/live-conversation/latest');
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.message) {
+                    testResults.latestMessage = true;
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>Latest Message: Working
+                            <ul class="mb-0 mt-2">
+                                <li>Agent: ${data.message.agent_name}</li>
+                                <li>Type: ${data.message.agent_type}</li>
+                                <li>Time: ${data.message.timestamp}</li>
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Latest message API failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>Error: ${error.message}
+                    </div>
+                `;
+            }
+            updateTestSummary();
+        }
+
+        async function testInvestigation() {
+            const resultDiv = document.getElementById('investigation-result');
+            resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Generating...';
+            
+            try {
+                const response = await fetch('/api/investigation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messageId: 'test-123',
+                        messageContent: 'Perfect Roofing Team provides quality roofing services in New Jersey.',
+                        agentType: 'Business AI Assistant',
+                        topic: 'Quality Roofing Services'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    testResults.investigation = true;
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>Investigation API: Working
+                            <ul class="mb-0 mt-2">
+                                <li>Title: ${data.title}</li>
+                                <li>Sections: ${data.sections?.length || 0}</li>
+                                <li>Confidence: ${data.confidence}%</li>
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Investigation API failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>Error: ${error.message}
+                    </div>
+                `;
+            }
+            updateTestSummary();
+        }
+
+        async function testTopicGeneration() {
+            const resultDiv = document.getElementById('topic-generation-result');
+            resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Generating...';
+            
+            try {
+                const response = await fetch('/api/generate-topic', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    testResults.topicGeneration = true;
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>Topic Generation: Working
+                            <div class="mt-2">
+                                <strong>Generated Topic:</strong> ${data.topic}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Topic generation API failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>Error: ${error.message}
+                    </div>
+                `;
+            }
+            updateTestSummary();
+        }
+
+        function updateTestSummary() {
+            const summaryDiv = document.getElementById('test-summary');
+            const passedTests = Object.values(testResults).filter(result => result).length;
+            const totalTests = Object.keys(testResults).length;
+            
+            if (passedTests === totalTests) {
+                summaryDiv.className = 'alert alert-success';
+                summaryDiv.innerHTML = `
+                    <i class="fas fa-check-circle me-2"></i>
+                    All API tests passed! (${passedTests}/${totalTests}) Ready for production deployment.
+                `;
+            } else if (passedTests > 0) {
+                summaryDiv.className = 'alert alert-warning';
+                summaryDiv.innerHTML = `
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Partial success: ${passedTests}/${totalTests} tests passed. Check failed tests above.
+                `;
+            } else {
+                summaryDiv.className = 'alert alert-info';
+                summaryDiv.innerHTML = `
+                    <i class="fas fa-info-circle me-2"></i>
+                    Click test buttons above to verify API functionality. (${passedTests}/${totalTests} completed)
+                `;
+            }
+        }
+
+        // Auto-run basic tests on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                testAPIStatus();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

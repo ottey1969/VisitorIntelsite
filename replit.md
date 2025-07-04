@@ -112,6 +112,11 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Public URLs**: `/public/conversation/{id}` format for each AI discussion
 
 ## Recent Changes
+- **July 04, 2025**: API Integration with Investigation Feature implemented
+- **New API Endpoints**: /api/live-conversation, /api/investigation, /api/generate-topic for real-time data access
+- **Investigation System**: Short investigation summaries with AI-powered analysis and downloadable reports
+- **API Test Page**: /api-test route for comprehensive API functionality verification
+- **Enhanced JavaScript**: API-integrated conversation feed with real-time polling and investigation modals
 - **July 03, 2025**: Complete 4-AI platform deployment with all APIs active
 - **24/7 Operation**: Keepalive monitoring and auto-content generation implemented (FULLY OPERATIONAL)
 - **Live Timestamps Fixed**: Real-time timestamp updates with staggered timing (2-minute intervals between messages) to create authentic conversation flow
