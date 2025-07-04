@@ -6,6 +6,7 @@ Handles social media posting, scheduling, and content management for monthly sub
 import os
 import json
 import base64
+import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from sqlalchemy import and_
@@ -18,6 +19,92 @@ from models import Business, Conversation, ConversationMessage
 
 class SocialMediaManager:
     """Manages social media posting and scheduling for businesses"""
+    
+    # Professional content templates for different industries and contexts
+    CONTENT_TEMPLATES = {
+        'roofing': {
+            'opening_hooks': [
+                "🏠 Protecting your home with premium roofing excellence!",
+                "⚡ Emergency roofing services available 24/7!",
+                "🔧 Expert roofing contractors delivering quality results!",
+                "🌟 Industry-leading roofing solutions for your peace of mind!",
+                "💪 Trusted roofing professionals with proven track records!",
+                "🛡️ Your roof, our expertise - unmatched protection guaranteed!",
+                "🎯 Precision roofing services that exceed expectations!",
+                "🏆 Award-winning roofing contractors serving your community!"
+            ],
+            'value_propositions': [
+                "Licensed, insured, and dedicated to exceptional craftsmanship.",
+                "Years of experience delivering reliable roofing solutions.",
+                "Emergency response team ready when you need us most.",
+                "Quality materials and professional installation guaranteed.",
+                "Local expertise with industry-leading certifications.",
+                "Comprehensive roofing services from repair to replacement.",
+                "Customer satisfaction backed by solid warranties.",
+                "Advanced roofing technology for modern home protection."
+            ],
+            'call_to_actions': [
+                "Contact us today for your free roofing consultation!",
+                "Get your professional roof inspection scheduled now!",
+                "Don't wait - protect your investment with expert roofing!",
+                "Ready to experience the difference? Call us today!",
+                "Schedule your roofing assessment with our experts!",
+                "Transform your roof with professional quality service!",
+                "Get started with New Jersey's trusted roofing team!",
+                "Secure your home's future with our roofing experts!"
+            ],
+            'hashtags': {
+                'general': ['#RoofingExperts', '#QualityRoofing', '#ProfessionalService', '#HomeProtection'],
+                'emergency': ['#EmergencyRoofing', '#StormDamage', '#RoofRepair', '#24x7Service'],
+                'location': ['#NewJerseyRoofing', '#LodRoofing', '#LocalContractors', '#NJHomelimprovement'],
+                'quality': ['#LicensedRoofers', '#InsuredContractors', '#WarrantyBacked', '#CertifiedProfessionals']
+            }
+        },
+        'general': {
+            'opening_hooks': [
+                "🚀 Excellence in service, innovation in approach!",
+                "💼 Professional solutions tailored to your needs!",
+                "⭐ Delivering exceptional results every single time!",
+                "🎯 Your success is our commitment and priority!",
+                "🏆 Industry leaders with proven track records!",
+                "💪 Dedicated professionals exceeding expectations!",
+                "🔥 Innovation meets expertise in every project!",
+                "✨ Premium service quality you can trust completely!"
+            ],
+            'value_propositions': [
+                "Certified professionals delivering outstanding results.",
+                "Years of experience serving satisfied customers.",
+                "Quality service backed by comprehensive warranties.",
+                "Local expertise with industry-leading standards.",
+                "Customer-focused approach with personalized solutions.",
+                "Reliable service you can count on every time.",
+                "Professional excellence in everything we do.",
+                "Innovative solutions for modern challenges."
+            ],
+            'call_to_actions': [
+                "Contact us today for your free consultation!",
+                "Ready to get started? Reach out now!",
+                "Experience the difference - call us today!",
+                "Let's discuss your project requirements!",
+                "Schedule your consultation with our experts!",
+                "Get your personalized quote today!",
+                "Don't wait - contact our team now!",
+                "Ready to see exceptional results? Call us!"
+            ],
+            'hashtags': {
+                'general': ['#ProfessionalService', '#QualityWork', '#CustomerFirst', '#TrustedExperts'],
+                'local': ['#LocalBusiness', '#CommunityTrusted', '#LocalExperts', '#YourNeighborhood'],
+                'quality': ['#QualityGuaranteed', '#ProfessionalStandards', '#ExcellentService', '#ReliableResults']
+            }
+        }
+    }
+    
+    EMOJI_SETS = {
+        'professional': ['💼', '🏆', '⭐', '✅', '🎯', '💪', '🔧', '📞'],
+        'service': ['🛠️', '🔨', '⚡', '🚀', '💡', '🏠', '🔑', '📋'],
+        'quality': ['🌟', '🥇', '👍', '✨', '💎', '🛡️', '🎖️', '🏅'],
+        'communication': ['📞', '💬', '📧', '📱', '💻', '🗣️', '📝', '📞']
+    }
     
     SUPPORTED_PLATFORMS = {
         'facebook': {
@@ -54,43 +141,47 @@ class SocialMediaManager:
         self.post_frequency = 2  # Posts per day
         
     def generate_conversation_highlights(self, conversation_id: int) -> List[Dict[str, Any]]:
-        """Generate social media posts from conversation highlights"""
+        """Generate social media posts from conversation highlights using professional content templates"""
         try:
             conversation = Conversation.query.get(conversation_id)
             if not conversation:
                 return []
             
             business = conversation.business
-            messages = conversation.messages
             
-            # Generate different types of posts
+            # Generate different types of professional posts
             posts = []
             
-            # 1. Quote post from best message
-            best_message = self._find_best_message(messages)
-            if best_message:
-                posts.append({
-                    'type': 'quote',
-                    'content': self._create_quote_post(best_message, business, conversation.topic),
-                    'platform_content': self._adapt_for_platforms(
-                        self._create_quote_post(best_message, business, conversation.topic)
-                    )
-                })
-            
-            # 2. Conversation summary post
-            summary_post = self._create_summary_post(conversation, business)
+            # 1. Conversation highlight post with AI quote
+            highlight_content = self._generate_professional_content(conversation, business, 'conversation_highlight')
             posts.append({
-                'type': 'summary',
-                'content': summary_post,
-                'platform_content': self._adapt_for_platforms(summary_post)
+                'type': 'conversation_highlight',
+                'content': highlight_content,
+                'platform_content': self._adapt_for_platforms_professional(highlight_content)
             })
             
-            # 3. Question/engagement post
-            question_post = self._create_question_post(conversation.topic, business)
+            # 2. Conversation summary post with statistics
+            summary_content = self._generate_professional_content(conversation, business, 'summary')
             posts.append({
-                'type': 'question',
-                'content': question_post,
-                'platform_content': self._adapt_for_platforms(question_post)
+                'type': 'summary',
+                'content': summary_content,
+                'platform_content': self._adapt_for_platforms_professional(summary_content)
+            })
+            
+            # 3. Question/engagement post to drive interaction
+            question_content = self._generate_professional_content(conversation, business, 'question_engagement')
+            posts.append({
+                'type': 'question_engagement',
+                'content': question_content,
+                'platform_content': self._adapt_for_platforms_professional(question_content)
+            })
+            
+            # 4. Service showcase post (bonus content)
+            showcase_content = self._generate_professional_content(conversation, business, 'service_showcase')
+            posts.append({
+                'type': 'service_showcase',
+                'content': showcase_content,
+                'platform_content': self._adapt_for_platforms_professional(showcase_content)
             })
             
             return posts
@@ -354,3 +445,187 @@ Drop a comment below 👇
             
         except Exception as e:
             return {'success': False, 'error': str(e)}
+    
+    def _get_industry_content(self, business):
+        """Get industry-specific content templates"""
+        industry_key = 'roofing' if 'roof' in business.industry.lower() else 'general'
+        return self.CONTENT_TEMPLATES.get(industry_key, self.CONTENT_TEMPLATES['general'])
+    
+    def _generate_professional_content(self, conversation, business, post_type='highlight'):
+        """Generate professional social media content with proper emojis and hashtags"""
+        content_templates = self._get_industry_content(business)
+        
+        # Get random content elements to ensure variety
+        hook = random.choice(content_templates['opening_hooks'])
+        value_prop = random.choice(content_templates['value_propositions'])
+        cta = random.choice(content_templates['call_to_actions'])
+        
+        # Get relevant hashtags
+        hashtag_categories = ['general', 'quality']
+        if business.location and 'new jersey' in business.location.lower():
+            hashtag_categories.append('location')
+        
+        hashtags = []
+        for category in hashtag_categories:
+            if category in content_templates['hashtags']:
+                hashtags.extend(content_templates['hashtags'][category])
+        
+        # Add business-specific hashtags
+        business_hashtag = f"#{business.name.replace(' ', '')}"
+        hashtags.insert(0, business_hashtag)
+        
+        # Limit to 6-8 hashtags for optimal engagement
+        hashtags = hashtags[:8]
+        hashtag_string = ' '.join(hashtags)
+        
+        if post_type == 'conversation_highlight':
+            # Get the best message from conversation
+            best_message = self._find_best_message(conversation.messages)
+            message_content = best_message.content if best_message else "Expert insights from our AI discussion"
+            
+            content = f"""{hook}
+            
+💬 "{message_content[:120]}..."
+
+✅ {value_prop}
+🎯 AI experts discussing {conversation.topic.lower()}
+⚡ Real-time insights about our services
+📞 {cta}
+
+{hashtag_string}"""
+            
+        elif post_type == 'summary':
+            message_count = len(conversation.messages)
+            agent_count = len(set(msg.agent_name for msg in conversation.messages))
+            
+            content = f"""{hook}
+
+🤖 Latest AI conversation: {conversation.topic}
+📊 {message_count} expert messages exchanged
+👥 {agent_count} AI specialists discussing our services
+⭐ {value_prop}
+
+Key highlights:
+🔧 Professional expertise and quality standards
+🏠 Customer-focused service delivery
+📈 Industry-leading solutions and results
+
+{cta}
+
+{hashtag_string}"""
+            
+        elif post_type == 'question_engagement':
+            content = f"""{hook}
+
+❓ What matters most when choosing a {business.industry.lower()} professional?
+
+Our AI experts just discussed:
+🎯 Quality materials and craftsmanship
+⚡ Emergency response capabilities  
+🏆 Industry certifications and experience
+📞 Customer service excellence
+
+✅ {value_prop}
+
+Drop a comment - what's your top priority? 👇
+
+{cta}
+
+{hashtag_string}"""
+            
+        else:  # Default service showcase
+            content = f"""{hook}
+
+🌟 Serving {business.location} with professional excellence!
+
+Why choose {business.name}:
+✅ {value_prop}
+🏆 Years of proven industry experience
+🔧 Quality materials and expert installation
+📞 Responsive customer service team
+
+{cta}
+
+{hashtag_string}"""
+        
+        return content.strip()
+    
+    def _create_platform_specific_content(self, base_content, platform):
+        """Adapt content for specific platform requirements"""
+        max_chars = self.SUPPORTED_PLATFORMS[platform]['max_chars']
+        
+        if platform == 'twitter' and len(base_content) > max_chars:
+            # For Twitter, create a shorter version
+            lines = base_content.split('\n')
+            # Keep hook, one key point, and hashtags
+            short_content = []
+            short_content.append(lines[0])  # Hook
+            
+            # Find the most important content line
+            for line in lines[1:]:
+                if any(emoji in line for emoji in ['✅', '🎯', '⚡', '📞']) and len(' '.join(short_content + [line])) < max_chars - 50:
+                    short_content.append(line)
+                    break
+            
+            # Add hashtags (last lines usually)
+            hashtag_line = next((line for line in reversed(lines) if line.startswith('#')), '')
+            if hashtag_line:
+                # Limit hashtags for Twitter
+                hashtags = hashtag_line.split()[:5]
+                short_content.append(' '.join(hashtags))
+            
+            return '\n'.join(short_content)
+        
+        elif platform == 'linkedin':
+            # LinkedIn prefers more professional tone
+            professional_content = base_content.replace('🔥', '💼').replace('🚀', '📈')
+            return professional_content
+        
+        elif platform == 'instagram':
+            # Instagram can use more emojis and visual language
+            visual_content = base_content
+            # Could add more visual elements here
+            return visual_content
+        
+        return base_content
+    
+    def _adapt_for_platforms_professional(self, base_content):
+        """Create platform-specific adaptations of professional content"""
+        adapted = {}
+        
+        for platform in self.SUPPORTED_PLATFORMS.keys():
+            adapted[platform] = self._create_platform_specific_content(base_content, platform)
+        
+        return adapted
+    
+    def _find_best_message(self, messages):
+        """Find the most engaging message from conversation"""
+        if not messages:
+            return None
+        
+        # Prioritize messages that mention key business terms
+        business_terms = ['quality', 'professional', 'expert', 'service', 'customer', 'experience']
+        
+        scored_messages = []
+        for message in messages:
+            score = 0
+            content_lower = message.content.lower()
+            
+            # Score based on business terms
+            for term in business_terms:
+                if term in content_lower:
+                    score += 1
+            
+            # Prefer messages of good length (not too short or long)
+            if 50 <= len(message.content) <= 200:
+                score += 2
+            
+            # Prefer certain agent types
+            if message.agent_type in ['openai', 'anthropic']:
+                score += 1
+            
+            scored_messages.append((score, message))
+        
+        # Return highest scoring message
+        scored_messages.sort(key=lambda x: x[0], reverse=True)
+        return scored_messages[0][1] if scored_messages else messages[0]
