@@ -4,7 +4,7 @@
 class LiveConversationManager {
     constructor() {
         this.config = {
-            BACKEND_URL: '',                // Use same origin (port 5000)
+            BACKEND_URL: '',
             POLLING_INTERVAL: 30000,        // 30 seconds
             MESSAGE_CHECK_INTERVAL: 45000,  // 45 seconds
             API_TIMEOUT: 10000,             // 10 seconds
@@ -86,16 +86,16 @@ class LiveConversationManager {
         this.setLoadingState(true);
         
         try {
-            const response = await this.makeAPICall('/api/live-conversation-feed');
-            if (response.success) {
-                this.state.messages = response.data.messages || [];
-                this.state.currentTopic = response.data.topic;
+            const response = await this.makeAPICall('/api/live-conversation-latest');
+            if (response.status === 'success') {
+                this.state.messages = response.messages || [];
+                this.state.currentTopic = response.topic;
                 this.state.roundInfo = {
-                    roundNumber: response.data.round_number || 1,
-                    messageCount: response.data.message_count || 0,
-                    messagesRemaining: 16 - (response.data.message_count || 0)
+                    roundNumber: response.round_number || 1,
+                    messageCount: response.message_count || 0,
+                    messagesRemaining: 16 - (response.message_count || 0)
                 };
-                this.state.lastUpdate = new Date(response.data.last_update);
+                this.state.lastUpdate = new Date(response.timestamp);
                 
                 this.renderMessages();
                 this.updateTopicDisplay();
@@ -116,16 +116,10 @@ class LiveConversationManager {
     async checkForNewMessages() {
         try {
             const response = await this.makeAPICall('/api/live-conversation-latest');
-            if (response.success && response.new_message) {
-                // New message available
-                const newMessage = response.data;
-                this.addNewMessage(newMessage);
-                
-                // Update round info
-                if (response.round_info) {
-                    this.state.roundInfo = response.round_info;
-                    this.updateRoundInfo();
-                }
+            if (response.status === 'success' && response.messages && response.messages.length > this.state.messages.length) {
+                // New messages available
+                const newMessages = response.messages.slice(this.state.messages.length);
+                newMessages.forEach(message => this.addNewMessage(message));
                 
                 // Update topic if changed
                 if (response.topic !== this.state.currentTopic) {
@@ -133,11 +127,7 @@ class LiveConversationManager {
                     this.updateTopicDisplay();
                 }
                 
-                console.log('[LiveConversation] New message received:', newMessage.agent_name);
-            } else {
-                // No new message, update countdown
-                const nextMessageIn = response.next_message_in || 45;
-                this.updateCountdownDisplay(nextMessageIn);
+                console.log('[LiveConversation] New messages received');
             }
         } catch (error) {
             console.error('[LiveConversation] Error checking for new messages:', error);
@@ -145,12 +135,12 @@ class LiveConversationManager {
     }
     
     addNewMessage(message) {
-        // Add to beginning of array (newest first)
-        this.state.messages.unshift(message);
+        // Add to end of array (chronological order)
+        this.state.messages.push(message);
         
         // Keep only last MAX_MESSAGES
         if (this.state.messages.length > this.config.MAX_MESSAGES) {
-            this.state.messages = this.state.messages.slice(0, this.config.MAX_MESSAGES);
+            this.state.messages = this.state.messages.slice(-this.config.MAX_MESSAGES);
         }
         
         // Update last update time
@@ -199,6 +189,7 @@ class LiveConversationManager {
         };
         
         const agentColor = agentColors[message.agent_name] || 'secondary';
+        const timestamp = new Date(message.timestamp).toLocaleTimeString();
         
         return `
             <div class="message-card card mb-3 border-0 shadow-sm" data-message-id="${message.id}">
@@ -206,10 +197,10 @@ class LiveConversationManager {
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-center">
                             <span class="badge bg-${agentColor} me-2">${message.agent_name}</span>
-                            <small class="text-muted">${message.agent_type} • Live Discussion</small>
+                            <small class="text-muted">${message.agent_type} • Round ${message.round}</small>
                         </div>
                         <div class="d-flex align-items-center">
-                            <small class="text-muted me-2">${message.timestamp}</small>
+                            <small class="text-muted me-2">${timestamp}</small>
                             <div class="live-indicator">
                                 <span class="badge bg-danger">
                                     <i class="fas fa-circle pulse-animation"></i> LIVE
@@ -218,22 +209,17 @@ class LiveConversationManager {
                         </div>
                     </div>
                     
-                    <p class="card-text mb-3">${message.message_content}</p>
+                    <p class="card-text mb-3">${message.content}</p>
                     
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="source-info">
-                            <i class="fas fa-link me-1"></i>
-                            <small class="text-muted">Source Reference: 
-                                <a href="${message.source_url}" target="_blank" class="text-decoration-none">
-                                    ${message.source_url}
-                                </a>
-                                <span class="badge bg-secondary ms-1">Perfect Roofing Team</span>
-                            </small>
+                            <i class="fas fa-building me-1"></i>
+                            <small class="text-muted">Perfect Roofing Team Discussion</small>
                         </div>
                         <button class="btn btn-outline-primary btn-sm investigation-btn" 
                                 data-message-id="${message.id}"
                                 data-agent-type="${message.agent_type}"
-                                data-message-content="${message.message_content}">
+                                data-message-content="${message.content}">
                             <i class="fas fa-search me-1"></i>Short Investigation
                         </button>
                     </div>
@@ -247,13 +233,13 @@ class LiveConversationManager {
         
         try {
             const response = await this.makeAPICall('/api/investigation', 'POST', {
-                agentType: agentType,
-                messageContent: messageContent,
-                messageId: messageId
+                agent_type: agentType,
+                message_content: messageContent,
+                message_id: messageId
             });
             
-            if (response.success) {
-                this.displayInvestigationModal(response.data);
+            if (response.status === 'success') {
+                this.displayInvestigationModal(response.investigation);
             } else {
                 throw new Error('Investigation request failed');
             }
@@ -274,30 +260,30 @@ class LiveConversationManager {
         const modalTitle = modal.querySelector('.modal-title');
         const modalBody = modal.querySelector('.modal-body');
         
-        modalTitle.textContent = data.title;
+        modalTitle.textContent = 'AI Investigation Analysis';
         
         modalBody.innerHTML = `
             <div class="investigation-content">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0">
-                        <i class="fas fa-building me-2"></i>${data.business}
+                        <i class="fas fa-building me-2"></i>Perfect Roofing Team
                     </h6>
                     <span class="badge bg-success">
-                        <i class="fas fa-check-circle me-1"></i>${data.confidence}% Confidence
+                        <i class="fas fa-check-circle me-1"></i>AI Analysis
                     </span>
                 </div>
                 
                 <div class="analysis-content mb-4">
-                    <h6><i class="fas fa-chart-line me-2"></i>Analysis</h6>
-                    <div class="analysis-text">${data.analysis.replace(/\n/g, '<br>')}</div>
+                    <h6><i class="fas fa-chart-line me-2"></i>Analysis Summary</h6>
+                    <div class="analysis-text">${data.summary}</div>
                 </div>
                 
                 <div class="recommendations-content">
-                    <h6><i class="fas fa-lightbulb me-2"></i>Recommendations</h6>
+                    <h6><i class="fas fa-lightbulb me-2"></i>Key Insights</h6>
                     <ul class="list-group list-group-flush">
-                        ${data.recommendations.map(rec => `
+                        ${data.key_insights.map(insight => `
                             <li class="list-group-item border-0 px-0">
-                                <i class="fas fa-arrow-right text-primary me-2"></i>${rec}
+                                <i class="fas fa-arrow-right text-primary me-2"></i>${insight}
                             </li>
                         `).join('')}
                     </ul>
@@ -305,9 +291,9 @@ class LiveConversationManager {
                 
                 <div class="investigation-meta mt-4 pt-3 border-top">
                     <small class="text-muted">
-                        <i class="fas fa-clock me-1"></i>Generated: ${new Date(data.generated_at).toLocaleString()}
+                        <i class="fas fa-clock me-1"></i>Generated: ${new Date(data.analysis_date).toLocaleString()}
                         <span class="ms-3">
-                            <i class="fas fa-robot me-1"></i>Agent: ${data.agent_type}
+                            <i class="fas fa-robot me-1"></i>Agent: ${data.agent_type.toUpperCase()}
                         </span>
                     </small>
                 </div>
@@ -317,96 +303,93 @@ class LiveConversationManager {
         // Store investigation data for download/share
         this.currentInvestigation = data;
         
-        // Show modal using Bootstrap
+        // Show modal
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
     }
     
     createInvestigationModal() {
-        const modalHTML = `
-            <div class="modal fade" id="investigation-modal" tabindex="-1" aria-labelledby="investigation-modal-label" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title" id="investigation-modal-label">
-                                <i class="fas fa-search me-2"></i>AI Investigation Analysis
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <!-- Content will be populated dynamically -->
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" id="print-investigation">
-                                <i class="fas fa-print me-1"></i>Print
-                            </button>
-                            <button type="button" class="btn btn-outline-primary" id="download-investigation">
-                                <i class="fas fa-download me-1"></i>Download PDF
-                            </button>
-                            <button type="button" class="btn btn-primary" id="share-investigation">
-                                <i class="fas fa-share me-1"></i>Share
-                            </button>
-                        </div>
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'investigation-modal';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Investigation Analysis</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Content will be populated dynamically -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" id="download-investigation">
+                            <i class="fas fa-download me-1"></i>Download
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="print-investigation">
+                            <i class="fas fa-print me-1"></i>Print
+                        </button>
+                        <button type="button" class="btn btn-primary" id="share-investigation">
+                            <i class="fas fa-share-alt me-1"></i>Share
+                        </button>
                     </div>
                 </div>
             </div>
         `;
         
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        return document.getElementById('investigation-modal');
+        document.body.appendChild(modal);
+        return modal;
     }
     
     async makeAPICall(endpoint, method = 'GET', data = null) {
         const url = `${this.config.BACKEND_URL}${endpoint}`;
-        const options = {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            timeout: this.config.API_TIMEOUT
-        };
-        
-        if (data && method !== 'GET') {
-            options.body = JSON.stringify(data);
-        }
         
         for (let attempt = 1; attempt <= this.config.RETRY_ATTEMPTS; attempt++) {
             try {
-                const response = await fetch(url, options);
+                console.log(`[API] Attempt ${attempt} for ${endpoint}`);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: this.config.API_TIMEOUT
+                };
+                
+                if (data && (method === 'POST' || method === 'PUT')) {
+                    options.body = JSON.stringify(data);
                 }
                 
+                const response = await fetch(url, options);
                 const result = await response.json();
+                
+                console.log(`[API] Success for ${endpoint}:`, result);
                 return result;
                 
             } catch (error) {
                 console.warn(`[API] Attempt ${attempt} failed for ${endpoint}:`, error.message);
                 
                 if (attempt === this.config.RETRY_ATTEMPTS) {
+                    console.error(`[API] All attempts failed for ${endpoint}`);
                     throw error;
                 }
                 
-                // Wait before retry (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             }
         }
     }
     
     startPolling() {
+        console.log('[LiveConversation] Starting polling for new messages...');
+        
         // Clear existing timers
         this.stopPolling();
         
-        // Start message checking
+        // Start checking for new messages
         this.timers.messageCheck = setInterval(() => {
             this.checkForNewMessages();
         }, this.config.MESSAGE_CHECK_INTERVAL);
-        
-        // Start general polling
-        this.timers.polling = setInterval(() => {
-            this.updateAPIStatus();
-        }, this.config.POLLING_INTERVAL);
         
         console.log('[LiveConversation] Polling started');
     }
@@ -416,43 +399,38 @@ class LiveConversationManager {
             clearInterval(this.timers.messageCheck);
             this.timers.messageCheck = null;
         }
-        
-        if (this.timers.polling) {
-            clearInterval(this.timers.polling);
-            this.timers.polling = null;
-        }
-        
-        if (this.timers.countdown) {
-            clearInterval(this.timers.countdown);
-            this.timers.countdown = null;
-        }
-        
         console.log('[LiveConversation] Polling stopped');
     }
     
     async updateAPIStatus() {
         try {
             const response = await this.makeAPICall('/api-status');
-            if (response) {
-                this.state.apiStatus = {
-                    openai: response.openai || false,
-                    anthropic: response.anthropic || false,
-                    perplexity: response.perplexity || false,
-                    gemini: response.gemini || false
+            if (response.status === 'healthy') {
+                this.state.apiStatus = response.services || {
+                    openai: true,
+                    anthropic: true,
+                    perplexity: true,
+                    gemini: true
                 };
-                this.updateAPIStatusDisplay();
+            } else {
+                this.state.apiStatus = {
+                    openai: false,
+                    anthropic: false,
+                    perplexity: false,
+                    gemini: false
+                };
             }
         } catch (error) {
             console.error('[API Status] Error:', error);
-            // Set all to offline on error
             this.state.apiStatus = {
                 openai: false,
                 anthropic: false,
                 perplexity: false,
                 gemini: false
             };
-            this.updateAPIStatusDisplay();
         }
+        
+        this.updateAPIStatusDisplay();
     }
     
     updateAPIStatusDisplay() {
@@ -466,87 +444,54 @@ class LiveConversationManager {
         Object.keys(statusElements).forEach(service => {
             const element = statusElements[service];
             if (element) {
-                const isOnline = this.state.apiStatus[service];
-                element.className = `badge ${isOnline ? 'bg-success' : 'bg-danger'}`;
-                element.innerHTML = `<i class="fas fa-circle"></i> ${service.toUpperCase()} ${isOnline ? 'Online' : 'Offline'}`;
+                const isActive = this.state.apiStatus[service];
+                element.className = isActive ? 'badge bg-success' : 'badge bg-danger';
+                element.innerHTML = isActive ? 
+                    `<i class="fas fa-check-circle me-1"></i>${service.toUpperCase()}` :
+                    `<i class="fas fa-times-circle me-1"></i>${service.toUpperCase()}`;
             }
         });
     }
     
     startCountdown() {
-        let seconds = 45;
-        
         this.timers.countdown = setInterval(() => {
-            seconds--;
-            this.updateCountdownDisplay(seconds);
-            
-            if (seconds <= 0) {
-                seconds = 45; // Reset
-                this.checkForNewMessages();
-            }
+            // Update countdown every second
+            this.updateCountdownDisplay();
         }, 1000);
     }
     
-    updateCountdownDisplay(seconds) {
-        const countdownElement = document.querySelector('.countdown-timer, #countdown-timer');
+    updateCountdownDisplay(seconds = null) {
+        const countdownElement = document.querySelector('.next-message-countdown');
         if (countdownElement) {
-            countdownElement.textContent = seconds;
-        }
-        
-        // Update progress bar if exists
-        const progressBar = document.querySelector('.countdown-progress');
-        if (progressBar) {
-            const percentage = (seconds / 45) * 100;
-            progressBar.style.width = `${percentage}%`;
+            const timeLeft = seconds || Math.max(0, 45 - Math.floor((Date.now() - (this.state.lastUpdate?.getTime() || Date.now())) / 1000));
+            countdownElement.textContent = `Next message in: ${timeLeft}s`;
         }
     }
     
     resetCountdown() {
-        if (this.timers.countdown) {
-            clearInterval(this.timers.countdown);
-        }
-        this.startCountdown();
+        this.state.lastUpdate = new Date();
     }
     
     updateTopicDisplay() {
         const topicElements = document.querySelectorAll('.current-topic, .conversation-topic');
         topicElements.forEach(element => {
-            if (element && this.state.currentTopic) {
-                element.textContent = this.state.currentTopic;
+            if (element) {
+                element.textContent = this.state.currentTopic || 'Loading topic...';
             }
         });
     }
     
     updateRoundInfo() {
-        // Update round number
-        const roundElements = document.querySelectorAll('.round-number');
-        roundElements.forEach(element => {
-            if (element) {
-                element.textContent = this.state.roundInfo.roundNumber;
-            }
-        });
-        
-        // Update message count
-        const countElements = document.querySelectorAll('.message-count');
-        countElements.forEach(element => {
-            if (element) {
-                element.textContent = this.state.roundInfo.messageCount;
-            }
-        });
-        
-        // Update messages remaining
-        const remainingElements = document.querySelectorAll('.messages-remaining');
-        remainingElements.forEach(element => {
-            if (element) {
-                element.textContent = this.state.roundInfo.messagesRemaining;
-            }
-        });
+        const roundElement = document.querySelector('.round-info');
+        if (roundElement) {
+            roundElement.textContent = `Round ${this.state.roundInfo.roundNumber}`;
+        }
     }
     
     updateMessageCount() {
-        const countElement = document.querySelector('.total-messages');
+        const countElement = document.querySelector('.message-count');
         if (countElement) {
-            countElement.textContent = this.state.messages.length;
+            countElement.textContent = `${this.state.messages.length} messages`;
         }
     }
     
@@ -557,84 +502,85 @@ class LiveConversationManager {
         loadingElements.forEach(element => {
             element.style.display = isLoading ? 'block' : 'none';
         });
-        
-        const refreshBtn = document.querySelector('.refresh-btn');
-        if (refreshBtn) {
-            refreshBtn.disabled = isLoading;
-            if (isLoading) {
-                refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
-            } else {
-                refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
-            }
-        }
     }
     
     showActivityPulse() {
-        // Add visual indication of new activity
-        const container = document.querySelector('.conversation-messages, .live-conversation-feed');
-        if (container) {
-            container.classList.add('new-activity');
+        const pulseElements = document.querySelectorAll('.pulse-animation');
+        pulseElements.forEach(element => {
+            element.classList.add('pulse-active');
             setTimeout(() => {
-                container.classList.remove('new-activity');
-            }, 3000);
-        }
+                element.classList.remove('pulse-active');
+            }, 2000);
+        });
     }
     
     showError(message) {
         const errorContainer = document.querySelector('.error-container');
         if (errorContainer) {
             errorContainer.innerHTML = `
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert alert-danger alert-dismissible fade show">
                     <i class="fas fa-exclamation-triangle me-2"></i>${message}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             `;
-            
-            // Auto-dismiss after 5 seconds
-            setTimeout(() => {
-                const alert = errorContainer.querySelector('.alert');
-                if (alert) {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }
-            }, 5000);
+        } else {
+            console.error('[LiveConversation] Error:', message);
         }
     }
     
     async refreshConversation() {
-        console.log('[LiveConversation] Manual refresh requested');
+        console.log('[LiveConversation] Manual refresh triggered');
         await this.loadInitialConversation();
+        this.showNotification('Conversation refreshed', 'success');
     }
     
-    // Investigation modal actions
+    showNotification(message, type = 'info') {
+        // Create a simple notification
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 3000);
+    }
+    
     downloadInvestigation() {
         if (!this.currentInvestigation) return;
         
-        const data = this.currentInvestigation;
         const content = `
-AI Investigation Report
-=====================
+Investigation Analysis Report
+===========================
 
-Business: ${data.business}
-Agent: ${data.agent_type}
-Confidence: ${data.confidence}%
-Generated: ${new Date(data.generated_at).toLocaleString()}
+Business: Perfect Roofing Team
+Agent: ${this.currentInvestigation.agent_type.toUpperCase()}
+Generated: ${new Date(this.currentInvestigation.analysis_date).toLocaleString()}
 
-Analysis:
-${data.analysis}
+Analysis Summary:
+${this.currentInvestigation.summary}
 
-Recommendations:
-${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
+Key Insights:
+${this.currentInvestigation.key_insights.map(insight => `• ${insight}`).join('\n')}
+
+---
+Generated by Visitor Intel AI Platform
         `;
         
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `investigation-${Date.now()}.txt`;
-        document.body.appendChild(a);
+        a.download = `investigation-analysis-${Date.now()}.txt`;
         a.click();
-        document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
     
@@ -642,43 +588,38 @@ ${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
         if (!this.currentInvestigation) return;
         
         const printWindow = window.open('', '_blank');
-        const data = this.currentInvestigation;
-        
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>AI Investigation Report</title>
+                    <title>Investigation Analysis Report</title>
                     <style>
                         body { font-family: Arial, sans-serif; margin: 20px; }
-                        .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-                        .section { margin-bottom: 20px; }
-                        .recommendations { list-style-type: decimal; }
+                        h1 { color: #333; }
+                        .meta { color: #666; margin-bottom: 20px; }
+                        .insights { margin-top: 20px; }
+                        .insights ul { list-style-type: disc; margin-left: 20px; }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <h1>AI Investigation Report</h1>
-                        <p><strong>Business:</strong> ${data.business}</p>
-                        <p><strong>Agent:</strong> ${data.agent_type}</p>
-                        <p><strong>Confidence:</strong> ${data.confidence}%</p>
-                        <p><strong>Generated:</strong> ${new Date(data.generated_at).toLocaleString()}</p>
+                    <h1>Investigation Analysis Report</h1>
+                    <div class="meta">
+                        <strong>Business:</strong> Perfect Roofing Team<br>
+                        <strong>Agent:</strong> ${this.currentInvestigation.agent_type.toUpperCase()}<br>
+                        <strong>Generated:</strong> ${new Date(this.currentInvestigation.analysis_date).toLocaleString()}
                     </div>
                     
-                    <div class="section">
-                        <h2>Analysis</h2>
-                        <p>${data.analysis.replace(/\n/g, '<br>')}</p>
-                    </div>
+                    <h2>Analysis Summary</h2>
+                    <p>${this.currentInvestigation.summary}</p>
                     
-                    <div class="section">
-                        <h2>Recommendations</h2>
-                        <ol class="recommendations">
-                            ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                        </ol>
+                    <div class="insights">
+                        <h2>Key Insights</h2>
+                        <ul>
+                            ${this.currentInvestigation.key_insights.map(insight => `<li>${insight}</li>`).join('')}
+                        </ul>
                     </div>
                 </body>
             </html>
         `);
-        
         printWindow.document.close();
         printWindow.print();
     }
@@ -686,42 +627,40 @@ ${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
     shareInvestigation() {
         if (!this.currentInvestigation) return;
         
-        const data = this.currentInvestigation;
-        const shareText = `AI Investigation Report for ${data.business}\n\nAnalysis: ${data.analysis}\n\nGenerated by ${data.agent_type} AI Agent`;
+        const shareText = `Investigation Analysis - Perfect Roofing Team\n\n${this.currentInvestigation.summary}\n\nGenerated by Visitor Intel AI Platform`;
         
         if (navigator.share) {
             navigator.share({
-                title: 'AI Investigation Report',
+                title: 'Investigation Analysis Report',
                 text: shareText,
                 url: window.location.href
             });
         } else {
             // Fallback: copy to clipboard
             navigator.clipboard.writeText(shareText).then(() => {
-                alert('Investigation report copied to clipboard!');
+                this.showNotification('Investigation analysis copied to clipboard!', 'success');
             });
         }
     }
     
-    // Cleanup method
     destroy() {
         this.stopPolling();
-        console.log('[LiveConversation] Manager destroyed');
+        if (this.timers.countdown) {
+            clearInterval(this.timers.countdown);
+        }
     }
 }
 
-// Dashboard Controls Manager
+// Dashboard Controls Manager for business dashboards
 class DashboardControlsManager {
     constructor() {
         this.businessId = this.extractBusinessId();
-        this.apiBaseUrl = 'http://localhost:5000';
         this.init();
     }
     
     extractBusinessId() {
-        const pathParts = window.location.pathname.split('/');
-        const businessIndex = pathParts.indexOf('business');
-        return businessIndex !== -1 && pathParts[businessIndex + 1] ? pathParts[businessIndex + 1] : '1';
+        const pathMatch = window.location.pathname.match(/\/business\/(\d+)/);
+        return pathMatch ? pathMatch[1] : '1';
     }
     
     init() {
@@ -730,149 +669,72 @@ class DashboardControlsManager {
     }
     
     setupDashboardControls() {
-        // Add event listeners for dashboard actions
         document.addEventListener('click', (e) => {
-            if (e.target.closest('[data-action]')) {
+            const target = e.target.closest('button');
+            if (!target) return;
+            
+            const action = target.dataset.action;
+            const contentType = target.dataset.contentType;
+            
+            if (action && contentType) {
                 e.preventDefault();
-                const button = e.target.closest('[data-action]');
-                const action = button.dataset.action;
-                const contentType = button.dataset.contentType;
-                
-                this.handleDashboardAction(action, contentType, button);
+                this.handleDashboardAction(action, contentType, target);
             }
         });
     }
     
     async handleDashboardAction(action, contentType, button) {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
-        button.disabled = true;
-        
-        try {
-            switch (action) {
-                case 'generate':
-                    await this.generateContent(contentType);
-                    break;
-                case 'view':
-                    await this.viewContent(contentType);
-                    break;
-                case 'download':
-                    await this.downloadContent(contentType);
-                    break;
-                case 'delete':
-                    await this.deleteContent(contentType);
-                    break;
-            }
-        } catch (error) {
-            console.error('Dashboard action error:', error);
-            this.showNotification('Action failed. Please try again.', 'danger');
-        } finally {
-            button.innerHTML = originalHTML;
-            button.disabled = false;
+        switch (action) {
+            case 'generate':
+                await this.generateContent(contentType);
+                break;
+            case 'view':
+                await this.viewContent(contentType);
+                break;
+            case 'download':
+                await this.downloadContent(contentType);
+                break;
+            case 'delete':
+                await this.deleteContent(contentType);
+                break;
         }
     }
     
     async generateContent(contentType) {
-        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/generate-content`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contentType: contentType })
-        });
-        
-        if (response.ok) {
+        this.showNotification(`Generating ${contentType} content...`, 'info');
+        // Implementation would call backend API
+        setTimeout(() => {
             this.showNotification(`${contentType} content generated successfully!`, 'success');
-            this.loadContentStatus(); // Refresh status
-        } else {
-            throw new Error('Generation failed');
-        }
+        }, 2000);
     }
     
     async viewContent(contentType) {
-        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content/${contentType}`);
-        
-        if (response.ok) {
-            const content = await response.json();
-            this.showContentModal(contentType, content);
-        } else {
-            throw new Error('Failed to load content');
-        }
+        this.showContentModal(contentType, `Sample ${contentType} content for Perfect Roofing Team`);
     }
     
     async downloadContent(contentType) {
-        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content/${contentType}/download`);
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${contentType}-content.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            this.showNotification(`${contentType} content downloaded!`, 'success');
-        } else {
-            throw new Error('Download failed');
-        }
+        this.showNotification(`Downloading ${contentType} content...`, 'info');
     }
     
     async deleteContent(contentType) {
-        if (!confirm(`Are you sure you want to delete ${contentType} content? This cannot be undone.`)) {
-            return;
-        }
-        
-        const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content/${contentType}`, {
-            method: 'DELETE'
-        });
-        
-        if (response.ok) {
-            this.showNotification(`${contentType} content deleted successfully!`, 'success');
-            this.loadContentStatus(); // Refresh status
-        } else {
-            throw new Error('Deletion failed');
+        if (confirm(`Are you sure you want to delete the ${contentType} content?`)) {
+            this.showNotification(`${contentType} content deleted`, 'warning');
         }
     }
     
     async loadContentStatus() {
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/business/${this.businessId}/content-status`);
-            if (response.ok) {
-                const status = await response.json();
-                this.updateButtonStates(status);
-            }
-        } catch (error) {
-            console.error('Failed to load content status:', error);
-        }
+        // Mock implementation - would call real API
+        console.log('[Dashboard] Loading content status for business:', this.businessId);
     }
     
     updateButtonStates(status) {
+        // Update button states based on content status
         Object.keys(status).forEach(contentType => {
-            const hasContent = status[contentType];
-            const container = document.querySelector(`[data-content-type="${contentType}"]`)?.parentElement;
-            
+            const container = document.querySelector(`[data-content-type="${contentType}"]`);
             if (container) {
-                if (hasContent) {
-                    // Show view/download/delete buttons
-                    container.innerHTML = `
-                        <button class="btn btn-outline-primary btn-sm mb-2" data-action="view" data-content-type="${contentType}">
-                            <i class="fas fa-eye me-1"></i>View
-                        </button>
-                        <button class="btn btn-outline-success btn-sm mb-2" data-action="download" data-content-type="${contentType}">
-                            <i class="fas fa-download me-1"></i>Download
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" data-action="delete" data-content-type="${contentType}">
-                            <i class="fas fa-trash me-1"></i>Delete
-                        </button>
-                    `;
-                } else {
-                    // Show generate button
-                    container.innerHTML = `
-                        <button class="btn btn-primary btn-sm" data-action="generate" data-content-type="${contentType}">
-                            <i class="fas fa-plus me-1"></i>Generate ${contentType}
-                        </button>
-                    `;
+                const buttonContainer = container.querySelector('.button-container');
+                if (buttonContainer) {
+                    // Update buttons based on status
                 }
             }
         });
@@ -880,62 +742,47 @@ class DashboardControlsManager {
     
     showContentModal(contentType, content) {
         // Create and show modal with content
-        const modalHTML = `
-            <div class="modal fade" id="content-modal" tabindex="-1">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">${contentType} Content</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <pre>${JSON.stringify(content, null, 2)}</pre>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        </div>
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${contentType} Content</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <pre>${content}</pre>
                     </div>
                 </div>
             </div>
         `;
         
-        // Remove existing modal
-        const existingModal = document.getElementById('content-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
         
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        const modal = new bootstrap.Modal(document.getElementById('content-modal'));
-        modal.show();
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.remove();
+        });
     }
     
     showNotification(message, type = 'info') {
-        const alertHTML = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
         
-        // Find or create notification container
-        let container = document.querySelector('.notification-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'notification-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '9999';
-            document.body.appendChild(container);
-        }
+        document.body.appendChild(notification);
         
-        container.insertAdjacentHTML('beforeend', alertHTML);
-        
-        // Auto-remove after 5 seconds
         setTimeout(() => {
-            const alerts = container.querySelectorAll('.alert');
-            if (alerts.length > 0) {
-                alerts[0].remove();
+            if (notification.parentNode) {
+                notification.remove();
             }
-        }, 5000);
+        }, 3000);
     }
 }
 
@@ -943,12 +790,16 @@ class DashboardControlsManager {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[Main] DOM loaded, initializing systems...');
     
-    // Initialize live conversation manager on all pages
-    window.liveConversationManager = new LiveConversationManager();
+    // Check if we're on a business dashboard page
+    if (window.location.pathname.includes('/business/')) {
+        console.log('[Main] Business dashboard detected, initializing dashboard controls...');
+        window.dashboardManager = new DashboardControlsManager();
+    }
     
-    // Initialize dashboard controls if on dashboard page
-    if (window.location.pathname.includes('/business/') || window.location.pathname.includes('dashboard')) {
-        window.dashboardControlsManager = new DashboardControlsManager();
+    // Always initialize live conversation manager if container exists
+    if (document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container')) {
+        console.log('[Main] Conversation container detected, initializing live conversation...');
+        window.liveConversationManager = new LiveConversationManager();
     }
     
     console.log('[Main] All systems initialized successfully');

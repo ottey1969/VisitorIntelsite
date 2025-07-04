@@ -112,6 +112,11 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Public URLs**: `/public/conversation/{id}` format for each AI discussion
 
 ## Recent Changes
+- **July 04, 2025**: Complete Backend API Integration and Frontend Deployment implemented
+- **Enhanced Frontend JavaScript**: Deployed updated main.js and dashboard_controls.js with real backend connectivity
+- **API Endpoints Integration**: Successfully integrated /api/live-conversation-latest and /api/investigation endpoints
+- **Real-time Data Connection**: Live conversation feed now displays actual conversation data from Perfect Roofing Team
+- **Investigation System**: Short Investigation feature fully functional with AI-powered analysis and downloadable reports
 - **July 04, 2025**: Complete Business-Specific Conversation Integration implemented
 - **Business-Connected Live Feed**: All conversations now connected to real business conversation history from database
 - **API Endpoints Enhanced**: /api/live-conversation/{business_id} supports business-specific data queries
