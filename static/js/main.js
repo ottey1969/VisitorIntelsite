@@ -4,7 +4,7 @@
 class LiveConversationManager {
     constructor() {
         this.config = {
-            BACKEND_URL: 'http://localhost:5000',
+            BACKEND_URL: '',                // Use same origin (port 5000)
             POLLING_INTERVAL: 30000,        // 30 seconds
             MESSAGE_CHECK_INTERVAL: 45000,  // 45 seconds
             API_TIMEOUT: 10000,             // 10 seconds
@@ -86,7 +86,7 @@ class LiveConversationManager {
         this.setLoadingState(true);
         
         try {
-            const response = await this.makeAPICall('/api/live-conversation');
+            const response = await this.makeAPICall('/api/live-conversation-feed');
             if (response.success) {
                 this.state.messages = response.data.messages || [];
                 this.state.currentTopic = response.data.topic;
@@ -115,7 +115,7 @@ class LiveConversationManager {
     
     async checkForNewMessages() {
         try {
-            const response = await this.makeAPICall('/api/live-conversation/latest');
+            const response = await this.makeAPICall('/api/live-conversation-latest');
             if (response.success && response.new_message) {
                 // New message available
                 const newMessage = response.data;

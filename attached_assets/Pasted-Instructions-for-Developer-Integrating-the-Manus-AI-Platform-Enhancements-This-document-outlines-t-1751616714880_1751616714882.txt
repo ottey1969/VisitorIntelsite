@@ -1,0 +1,34 @@
+Instructions for Developer: Integrating the Manus AI Platform Enhancements
+This document outlines the steps to integrate the provided frontend and backend code into your Replit project to enable the enhanced live AI conversation feed, investigation feature, and dynamic business dashboard controls.
+Goal: To have a fully functional platform that displays real-time AI conversations, provides detailed investigation analysis, and offers dynamic content management on the business dashboard, all powered by a backend API.
+Phase 1: Deploy the Backend (from backend-source.zip)
+This is the most critical step. The frontend relies on this backend to serve all dynamic data.
+Extract backend-source.zip: Unzip the backend-source.zip file. This will create a folder (e.g., visitor-intel-mock-backend).
+Navigate to the Backend Directory: Open your terminal in Replit and navigate into the extracted backend directory (e.g., cd visitor-intel-mock-backend).
+Install Dependencies: It is highly recommended to use a virtual environment.
+bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+Run the Flask Backend: Start the Flask application. Ensure it listens on 0.0.0.0 and a port (e.g., 5000) so it's accessible.
+bash
+python src/main.py
+Important: This process needs to be running continuously for the frontend to work. In Replit, you might need to configure it as a service or ensure it runs in a persistent shell.
+Verify Backend is Running: Once started, you should be able to access http://localhost:5000/health (or your Replit-assigned URL ) and see a healthy status response.
+Phase 2: Integrate Frontend for Live Conversation Feed & Investigation
+This updates the main live feed on your homepage and public conversation pages.
+Locate main.js: Find the primary JavaScript file for your frontend (likely named main.js or similar) that controls the live conversation feed on your homepage (/) and public conversation pages (/public/conversation/{id}).
+Replace Content: Replace the entire content of your existing main.js file with the content from the provided api_integrated_with_backend.js file.
+HTML Structure (for Investigation Modal): Ensure your HTML includes the necessary structure for the investigation modal. The api_integrated_with_backend.js expects a modal with specific IDs and classes to display the investigation content. Refer to test_full_system.html for an example of the required HTML structure for the investigation modal.
+Phase 3: Integrate Frontend for Business Dashboard Controls
+This updates the content generation and management section on your business dashboard (/business/{id}/dashboard).
+Locate Dashboard JavaScript: Find the JavaScript file or script block that controls the content generation buttons (FAQ, Local SEO, Voice Search, Knowledge Base) on your business dashboard page.
+Replace/Integrate Content: Replace the relevant JavaScript code with the content from the provided dashboard_controls_with_backend.js file. This file contains the logic for managing the state of the Generate, View, Download, and Delete buttons.
+HTML Structure: Ensure the HTML elements for your content modules (FAQ, Local SEO, etc.) have the correct IDs and classes that dashboard_controls_with_backend.js expects. Refer to test_full_system.html for an example of the required HTML structure for the dashboard content modules.
+Phase 4: Update API Endpoints (if necessary)
+By default, the frontend code is configured to call APIs at http://localhost:5000. If your backend is deployed at a different URL (e.g., a Replit-assigned URL or a custom domain ), you will need to update the BASE_API_URL variable in both api_integrated_with_backend.js and dashboard_controls_with_backend.js to point to your deployed backend URL.
+Phase 5: Testing and Verification
+After applying all changes:
+Verify Backend: Ensure your Flask backend is running and accessible.
+Test Live Feed: Open your homepage (/) and a public conversation page (/public/conversation/{id}). Confirm that the live conversation feed loads, updates in real-time, and the investigation feature works.
+Test Dashboard: Navigate to your business dashboard (/business/{id}/dashboard). Verify that the content generation buttons behave dynamically (Generate changes to View/Download/Delete after content is generated, and back to Generate after deletion).

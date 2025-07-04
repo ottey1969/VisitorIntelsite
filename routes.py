@@ -18,6 +18,7 @@ import uuid
 import logging
 import base64
 import random
+import time
 
 # Initialize AI conversation manager and payment handler
 ai_manager = AIConversationManager()
@@ -2077,6 +2078,96 @@ def get_business_showcase_url(business_id):
             'success': False,
             'error': str(e)
         }), 500
+
+# Additional API endpoints for enhanced frontend integration
+
+@app.route('/api/live-conversation-feed', methods=['GET'])
+def api_live_conversation_feed():
+    """Get live conversation data for frontend integration"""
+    try:
+        # Get latest conversations with messages
+        conversations = Conversation.query.order_by(Conversation.created_at.desc()).limit(5).all()
+        
+        conversation_data = []
+        for conv in conversations:
+            messages = ConversationMessage.query.filter_by(conversation_id=conv.id).order_by(ConversationMessage.id.desc()).limit(16).all()
+            
+            messages_data = []
+            for msg in messages:
+                messages_data.append({
+                    'id': msg.id,
+                    'agent_name': msg.ai_agent_name,
+                    'agent_type': msg.ai_agent_type.lower(),
+                    'content': msg.content,
+                    'timestamp': msg.created_at.isoformat() if msg.created_at else datetime.now().isoformat(),
+                    'round': 1,
+                    'messageNumber': len(messages_data) + 1
+                })
+            
+            conversation_data.append({
+                'id': conv.id,
+                'topic': conv.topic,
+                'business_name': conv.business.name if conv.business else 'Perfect Roofing Team',
+                'messages': list(reversed(messages_data))  # Reverse to show oldest first
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'conversations': conversation_data,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+@app.route('/api/live-conversation-latest', methods=['GET'])
+def api_live_conversation_latest_backend():
+    """Get latest conversation messages for frontend polling"""
+    try:
+        # Get the most recent conversation
+        latest_conv = Conversation.query.order_by(Conversation.created_at.desc()).first()
+        
+        if not latest_conv:
+            return jsonify({
+                'status': 'success',
+                'messages': [],
+                'topic': 'No conversations yet'
+            })
+        
+        # Get messages for the latest conversation
+        messages = ConversationMessage.query.filter_by(conversation_id=latest_conv.id).order_by(ConversationMessage.id.asc()).all()
+        
+        messages_data = []
+        for i, msg in enumerate(messages):
+            messages_data.append({
+                'id': msg.id,
+                'agent_name': msg.ai_agent_name,
+                'agent_type': msg.ai_agent_type.lower(),
+                'content': msg.content,
+                'timestamp': msg.created_at.isoformat() if msg.created_at else datetime.now().isoformat(),
+                'round': (i // 4) + 1,
+                'messageNumber': (i % 4) + 1
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'messages': messages_data,
+            'topic': latest_conv.topic,
+            'business_name': latest_conv.business.name if latest_conv.business else 'Perfect Roofing Team',
+            'conversation_id': latest_conv.id,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+
 
 @app.errorhandler(500)
 def internal_error(error):

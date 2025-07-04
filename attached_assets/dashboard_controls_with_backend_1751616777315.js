@@ -4,7 +4,7 @@
 class DashboardContentManager {
     constructor() {
         this.config = {
-            BACKEND_URL: '',                // Use same origin (port 5000)
+            BACKEND_URL: 'http://localhost:5000',
             API_TIMEOUT: 15000,
             RETRY_ATTEMPTS: 3
         };
@@ -618,3 +618,4 @@ style.textContent = `
 document.head.appendChild(style);
 
 console.log('[Dashboard] Script loaded successfully - Ready for real backend integration');
+
