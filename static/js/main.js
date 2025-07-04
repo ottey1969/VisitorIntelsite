@@ -157,7 +157,7 @@ class LiveConversationManager {
     }
     
     renderMessages() {
-        const container = document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container');
+        const container = document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container, .live-conversation-stream');
         if (!container) {
             console.warn('[LiveConversation] No conversation container found');
             return;
