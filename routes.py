@@ -487,18 +487,22 @@ def api_status():
     return jsonify(status)
 
 @app.route('/api/live-conversation')
-def api_live_conversation():
-    """Get current live conversation data"""
+@app.route('/api/live-conversation/<int:business_id>')
+def api_live_conversation(business_id=None):
+    """Get current live conversation data for a specific business or featured business"""
     try:
-        # Get the most recent conversation
-        featured_business = Business.query.filter_by(is_featured=True).first()
-        if not featured_business:
-            featured_business = Business.query.first()
+        # Get the specified business or the featured business
+        if business_id:
+            target_business = Business.query.get(business_id)
+        else:
+            target_business = Business.query.filter_by(is_featured=True).first()
+            if not target_business:
+                target_business = Business.query.first()
         
-        if featured_business:
-            # Get latest conversation for the featured business
+        if target_business:
+            # Get latest conversation for the target business
             latest_conversation = Conversation.query.filter_by(
-                business_id=featured_business.id
+                business_id=target_business.id
             ).order_by(Conversation.created_at.desc()).first()
             
             if latest_conversation:
@@ -520,7 +524,7 @@ def api_live_conversation():
                         'agent_type': message.agent_type,
                         'message_content': message.message_content,
                         'timestamp': message_time.strftime('%I:%M %p'),
-                        'source_url': featured_business.website_url or 'https://perfectroofingteam.com'
+                        'source_url': target_business.website_url or 'https://perfectroofingteam.com'
                     })
                 
                 return jsonify({
@@ -529,8 +533,9 @@ def api_live_conversation():
                     'topic': latest_conversation.topic,
                     'messageCount': len(formatted_messages),
                     'business': {
-                        'name': featured_business.business_name,
-                        'website': featured_business.website_url
+                        'id': target_business.id,
+                        'name': target_business.business_name,
+                        'website': target_business.website_url
                     }
                 })
         
@@ -552,16 +557,21 @@ def api_live_conversation():
         }), 500
 
 @app.route('/api/live-conversation/latest')
-def api_latest_message():
-    """Get the latest message from live conversation"""
+@app.route('/api/live-conversation/<int:business_id>/latest')
+def api_latest_message(business_id=None):
+    """Get the latest message from live conversation for a specific business"""
     try:
-        featured_business = Business.query.filter_by(is_featured=True).first()
-        if not featured_business:
-            featured_business = Business.query.first()
+        # Get the specified business or the featured business
+        if business_id:
+            target_business = Business.query.get(business_id)
+        else:
+            target_business = Business.query.filter_by(is_featured=True).first()
+            if not target_business:
+                target_business = Business.query.first()
         
-        if featured_business:
+        if target_business:
             latest_conversation = Conversation.query.filter_by(
-                business_id=featured_business.id
+                business_id=target_business.id
             ).order_by(Conversation.created_at.desc()).first()
             
             if latest_conversation:
@@ -579,9 +589,13 @@ def api_latest_message():
                             'agent_type': latest_message.agent_type,
                             'message_content': latest_message.message_content,
                             'timestamp': current_time.strftime('%I:%M %p'),
-                            'source_url': featured_business.website_url or 'https://perfectroofingteam.com'
+                            'source_url': target_business.website_url or 'https://perfectroofingteam.com'
                         },
-                        'topic': latest_conversation.topic
+                        'topic': latest_conversation.topic,
+                        'business': {
+                            'id': target_business.id,
+                            'name': target_business.business_name
+                        }
                     })
         
         return jsonify({

@@ -246,7 +246,98 @@
     </div>
 </section>
 
-<!-- Recent Conversations -->
+<!-- Live Conversation Feed -->
+<section class="py-4 bg-light">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold mb-0">
+                <i class="fas fa-satellite-dish text-success me-2"></i>Live Conversation Feed
+            </h4>
+            <div class="d-flex gap-2">
+                <span id="status-indicator" class="badge bg-success">
+                    <i class="fas fa-circle me-1"></i>LIVE
+                </span>
+                <button class="btn btn-outline-success btn-sm" onclick="refreshConversation()">
+                    <i class="fas fa-sync me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0" id="conversation-topic">Loading conversation...</h5>
+                                <small class="text-muted">Real-time AI discussion about your business</small>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">Business: {{ business.business_name }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                        <div id="live-conversation-messages" class="conversation-messages">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Loading live conversation...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>Business Analytics
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Total Conversations:</span>
+                                <strong>{{ conversations|length }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Total Messages:</span>
+                                <strong id="total-messages">{{ conversations|length * 16 }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Credits Used:</span>
+                                <strong>{{ conversations|length }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Live Status:</span>
+                                <span class="badge bg-success">Active</span>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="text-center">
+                            <a href="{{ url_for('all_conversations') }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="fas fa-eye me-1"></i>View All Conversations
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Conversations History -->
 <section class="py-4">
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -463,9 +554,277 @@ function showEcosystemModal(title, message) {
     document.body.appendChild(modal);
 }
 
-// Auto-refresh conversation status
-setInterval(function() {
-    location.reload();
-}, 60000); // Refresh every minute
+// Business-specific live conversation feed
+const businessId = {{ business.id }};
+let isPolling = true;
+let investigationModal = null;
+
+// Load live conversation for this specific business
+async function loadLiveConversation() {
+    try {
+        const response = await fetch(`/api/live-conversation/${businessId}`);
+        const data = await response.json();
+        
+        if (data.success && data.messages) {
+            displayConversationMessages(data.messages, data.topic);
+            updateAnalytics(data);
+        } else {
+            displayError('No conversation data available for this business yet.');
+        }
+    } catch (error) {
+        console.error('Error loading conversation:', error);
+        displayError('Failed to load conversation data.');
+    }
+}
+
+// Display conversation messages with investigation buttons
+function displayConversationMessages(messages, topic) {
+    const container = document.getElementById('live-conversation-messages');
+    const topicElement = document.getElementById('conversation-topic');
+    
+    if (topicElement) {
+        topicElement.textContent = topic || 'Business Discussion';
+    }
+    
+    if (!messages || messages.length === 0) {
+        container.innerHTML = '<div class="text-center py-4"><p class="text-muted">No messages available</p></div>';
+        return;
+    }
+    
+    let html = '';
+    messages.forEach((message, index) => {
+        const agentColors = {
+            'Business AI Assistant': 'primary',
+            'SEO AI Specialist': 'success', 
+            'Customer Service AI': 'info',
+            'Marketing AI Expert': 'warning'
+        };
+        
+        const agentColor = agentColors[message.agent_type] || 'secondary';
+        
+        html += `
+            <div class="message-item mb-3 fade-in" style="animation-delay: ${index * 0.1}s;">
+                <div class="d-flex align-items-start">
+                    <div class="avatar bg-${agentColor} bg-opacity-10 rounded-circle p-2 me-3">
+                        <i class="fas fa-robot text-${agentColor}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="fw-bold text-${agentColor}">${message.agent_name}</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <small class="text-muted">${message.timestamp}</small>
+                                <button class="btn btn-outline-primary btn-sm" onclick="investigateMessage(${message.id}, '${message.message_content.replace(/'/g, "\\'")}', '${message.agent_type}', '${topic}')">
+                                    <i class="fas fa-search me-1"></i>Investigate
+                                </button>
+                            </div>
+                        </div>
+                        <span class="badge bg-${agentColor} bg-opacity-10 text-${agentColor} small mb-2">${message.agent_type}</span>
+                        <p class="mb-0">${message.message_content}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
+}
+
+// Investigation functionality for messages
+async function investigateMessage(messageId, messageContent, agentType, topic) {
+    try {
+        showInvestigationModal(messageId, 'Generating investigation...', []);
+        
+        const response = await fetch('/api/investigation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                messageId: messageId,
+                messageContent: messageContent,
+                agentType: agentType,
+                topic: topic
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            updateInvestigationModal(data);
+        } else {
+            updateInvestigationModal({
+                title: 'Investigation Failed',
+                sections: [{ title: 'Error', content: data.error || 'Unable to generate investigation' }],
+                confidence: 0
+            });
+        }
+    } catch (error) {
+        console.error('Investigation error:', error);
+        updateInvestigationModal({
+            title: 'Investigation Error',
+            sections: [{ title: 'Error', content: 'Failed to connect to investigation service' }],
+            confidence: 0
+        });
+    }
+}
+
+// Show investigation modal
+function showInvestigationModal(messageId, title, sections) {
+    const modal = document.getElementById('investigationModal');
+    if (modal) {
+        modal.remove();
+    }
+    
+    const modalHtml = `
+        <div class="modal fade" id="investigationModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-search me-2"></i>Message Investigation
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="investigation-content">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">${title}</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="downloadInvestigation()">
+                            <i class="fas fa-download me-1"></i>Download Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    investigationModal = new bootstrap.Modal(document.getElementById('investigationModal'));
+    investigationModal.show();
+}
+
+// Update investigation modal with results
+function updateInvestigationModal(data) {
+    const content = document.getElementById('investigation-content');
+    if (!content) return;
+    
+    let html = `
+        <div class="investigation-report">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>${data.title}</h5>
+                <span class="badge bg-success">${data.confidence}% Confidence</span>
+            </div>
+    `;
+    
+    if (data.sections && data.sections.length > 0) {
+        data.sections.forEach(section => {
+            html += `
+                <div class="investigation-section mb-3">
+                    <h6 class="text-primary">${section.title}</h6>
+                    <p>${section.content}</p>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    content.innerHTML = html;
+}
+
+// Download investigation report
+function downloadInvestigation() {
+    const content = document.getElementById('investigation-content');
+    if (!content) return;
+    
+    const report = content.innerText;
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `investigation-report-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Display error message
+function displayError(message) {
+    const container = document.getElementById('live-conversation-messages');
+    container.innerHTML = `
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+}
+
+// Update analytics data
+function updateAnalytics(data) {
+    const totalMessages = document.getElementById('total-messages');
+    if (totalMessages && data.messageCount) {
+        totalMessages.textContent = data.messageCount;
+    }
+}
+
+// Refresh conversation manually
+function refreshConversation() {
+    const statusIndicator = document.getElementById('status-indicator');
+    statusIndicator.innerHTML = '<i class="fas fa-sync fa-spin me-1"></i>REFRESHING';
+    statusIndicator.className = 'badge bg-warning';
+    
+    setTimeout(() => {
+        loadLiveConversation();
+        statusIndicator.innerHTML = '<i class="fas fa-circle me-1"></i>LIVE';
+        statusIndicator.className = 'badge bg-success';
+    }, 1000);
+}
+
+// Auto-polling for live updates
+function startPolling() {
+    if (!isPolling) return;
+    
+    setTimeout(() => {
+        loadLiveConversation();
+        startPolling();
+    }, 30000); // Poll every 30 seconds
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadLiveConversation();
+    startPolling();
+});
+
+// CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .conversation-messages {
+        scroll-behavior: smooth;
+    }
+    
+    .message-item:hover {
+        background-color: rgba(0,0,0,0.02);
+        border-radius: 8px;
+        padding: 8px;
+        margin: -8px;
+        transition: all 0.2s ease;
+    }
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %}

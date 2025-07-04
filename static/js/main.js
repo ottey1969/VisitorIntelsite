@@ -1,18 +1,18 @@
-// API-Integrated Live AI Conversation Feed Solution with Short Investigation Feature
-// This solution pulls real data from your backend APIs and includes investigation summaries
+// Visitor Intel - AI Conversation Platform with Business-Specific Live Feed Integration
+// Connects all pages to real business conversation history with investigation features
 
-class APIIntegratedConversationFeed {
+class VisitorIntelConversationSystem {
     constructor() {
-        this.isLivePage = this.detectPageType();
+        this.pageType = this.detectPageType();
+        this.businessId = this.extractBusinessId();
         this.conversationData = [];
         this.currentTopic = '';
-        this.messageCount = 0;
-        this.maxMessagesPerRound = 16;
-        this.lastUpdateTime = Date.now();
-        this.messageInterval = 45000; // 45 seconds base interval
-        this.timestampInterval = 30000; // 30 seconds for timestamp updates
-        this.statusCheckInterval = 60000; // 1 minute for API status checks
-        this.syncKey = 'live_conversation_sync';
+        this.isPolling = true;
+        this.investigationModal = null;
+        
+        // Polling intervals
+        this.pollInterval = 30000; // 30 seconds
+        this.statusCheckInterval = 60000; // 1 minute
         
         // AI services status
         this.aiServicesStatus = {
@@ -22,15 +22,6 @@ class APIIntegratedConversationFeed {
             gemini: false
         };
         
-        // AI agents configuration
-        this.agents = [
-            { id: 'GPT', name: 'Business AI Assistant', color: 'primary', service: 'openai' },
-            { id: 'GMI', name: 'Marketing AI Expert', color: 'warning', service: 'gemini' },
-            { id: 'PPL', name: 'Customer Service AI', color: 'info', service: 'perplexity' },
-            { id: 'CLD', name: 'SEO AI Specialist', color: 'primary', service: 'anthropic' }
-        ];
-        
-        this.currentAgentIndex = 0;
         this.init();
     }
     
@@ -38,332 +29,162 @@ class APIIntegratedConversationFeed {
         const url = window.location.pathname;
         if (url === '/' || url.includes('home')) {
             return 'homepage';
+        } else if (url.includes('/business/')) {
+            return 'dashboard';
         } else if (url.includes('/public/conversation/')) {
             return 'public_conversation';
-        } else if (url.includes('/business/') || url.includes('dashboard')) {
-            return 'dashboard';
         }
-        return 'unknown';
+        return 'other';
+    }
+    
+    extractBusinessId() {
+        // Extract business ID from URL for dashboard pages
+        const urlMatch = window.location.pathname.match(/\/business\/(\d+)/);
+        return urlMatch ? parseInt(urlMatch[1]) : null;
     }
     
     init() {
-        if (this.isLivePage === 'homepage' || this.isLivePage === 'public_conversation') {
-            this.initializeLiveFeed();
-        } else if (this.isLivePage === 'dashboard') {
-            this.initializeDashboard();
+        console.log(`Initializing Visitor Intel system for ${this.pageType} page`);
+        
+        // Initialize based on page type
+        if (this.pageType === 'homepage') {
+            this.initHomepage();
+        } else if (this.pageType === 'dashboard') {
+            this.initDashboard();
+        }
+        
+        // Start background services
+        this.checkAPIStatus();
+        this.startPolling();
+        
+        // Set up page-specific listeners
+        this.setupEventListeners();
+    }
+    
+    initHomepage() {
+        // For homepage, show featured business conversation
+        this.loadFeaturedConversation();
+    }
+    
+    initDashboard() {
+        // For dashboard, load business-specific conversation
+        if (this.businessId) {
+            this.loadBusinessConversation(this.businessId);
         }
     }
     
-    initializeLiveFeed() {
-        // Check if this is the master instance (homepage)
-        this.isMaster = this.isLivePage === 'homepage';
-        
-        // Load synchronized state
-        this.loadSyncState();
-        
-        // Initialize UI elements
-        this.createLiveStatusBar();
-        this.createCountdownTimer();
-        this.createActivityPulse();
-        this.createAIServicesStatus();
-        this.createInvestigationModal();
-        
-        // Start API polling for real data
-        this.startAPIPolling();
-        
-        // Listen for sync updates from other tabs/pages
-        this.setupCrossTabSync();
-    }
-    
-    async startAPIPolling() {
-        // Initial load
-        await this.checkAPIStatus();
-        await this.loadCurrentConversation();
-        
-        // Set up intervals for different types of updates
-        this.setupPollingIntervals();
-    }
-    
-    setupPollingIntervals() {
-        // Check API status every minute
-        setInterval(() => {
-            this.checkAPIStatus();
-        }, this.statusCheckInterval);
-        
-        // Update timestamps every 30 seconds
-        setInterval(() => {
-            this.updateTimestamps();
-        }, this.timestampInterval);
-        
-        // Check for new messages every 45-90 seconds (randomized)
-        this.scheduleNextMessageCheck();
-    }
-    
-    scheduleNextMessageCheck() {
-        const randomInterval = this.messageInterval + (Math.random() * 45000); // 45-90 seconds
-        
-        setTimeout(async () => {
-            if (this.isMaster) {
-                await this.checkForNewMessage();
-            }
-            this.scheduleNextMessageCheck(); // Schedule next check
-        }, randomInterval);
-    }
-    
-    async checkAPIStatus() {
+    async loadFeaturedConversation() {
         try {
-            const response = await fetch('/api-status');
-            if (response.ok) {
-                const status = await response.json();
-                this.aiServicesStatus = status;
-                this.updateAIServicesDisplay();
-            }
-        } catch (error) {
-            console.log('API status check failed:', error);
-            // Set all services to false on error
-            this.aiServicesStatus = {
-                openai: false,
-                anthropic: false,
-                perplexity: false,
-                gemini: false
-            };
-            this.updateAIServicesDisplay();
-        }
-    }
-    
-    async loadCurrentConversation() {
-        try {
-            // For homepage, we'll use the current live conversation
-            // For public pages, we'll sync with the live conversation
             const response = await fetch('/api/live-conversation');
-            if (response.ok) {
-                const data = await response.json();
-                this.handleLiveConversationData(data);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.displayConversation(data);
             } else {
-                // Fallback: extract from current page if API not available
-                this.extractConversationFromPage();
+                this.displayError('No live conversation available');
             }
         } catch (error) {
-            console.log('Failed to load conversation from API:', error);
-            this.extractConversationFromPage();
+            console.error('Error loading featured conversation:', error);
+            this.displayError('Failed to load conversation data');
         }
     }
     
-    async checkForNewMessage() {
+    async loadBusinessConversation(businessId) {
         try {
-            const response = await fetch('/api/live-conversation/latest');
-            if (response.ok) {
-                const data = await response.json();
-                if (data.message && data.message.timestamp !== this.getLatestMessageTimestamp()) {
-                    this.addNewMessage(data.message, data.topic);
-                }
+            const response = await fetch(`/api/live-conversation/${businessId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.displayConversation(data);
+            } else {
+                this.displayError('No conversation data available for this business');
             }
         } catch (error) {
-            console.log('Failed to check for new message:', error);
+            console.error('Error loading business conversation:', error);
+            this.displayError('Failed to load conversation data');
         }
     }
     
-    handleLiveConversationData(data) {
-        if (data.messages && Array.isArray(data.messages)) {
-            this.conversationData = data.messages;
-            this.currentTopic = data.topic || '';
-            this.messageCount = data.messageCount || 0;
-            this.lastUpdateTime = Date.now();
+    displayConversation(data) {
+        const container = document.getElementById('live-conversation-messages') || 
+                         document.getElementById('conversation-feed') ||
+                         document.querySelector('.conversation-messages');
+        
+        if (!container) {
+            console.warn('No conversation container found on page');
+            return;
+        }
+        
+        // Update topic if element exists
+        const topicElement = document.getElementById('conversation-topic') ||
+                            document.getElementById('current-topic');
+        if (topicElement) {
+            topicElement.textContent = data.topic || 'Business Discussion';
+        }
+        
+        // Display messages
+        this.displayMessages(container, data.messages || [], data.topic || '');
+        
+        // Update analytics if available
+        this.updateAnalytics(data);
+    }
+    
+    displayMessages(container, messages, topic) {
+        if (!messages || messages.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-comments text-muted fa-3x mb-3"></i>
+                    <p class="text-muted">No conversation messages available</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        messages.forEach((message, index) => {
+            const agentColors = {
+                'Business AI Assistant': 'primary',
+                'SEO AI Specialist': 'success', 
+                'Customer Service AI': 'info',
+                'Marketing AI Expert': 'warning'
+            };
             
-            this.saveSyncState();
-            this.updateDisplay();
-            this.updateTopicDisplay();
-        }
-    }
-    
-    extractConversationFromPage() {
-        // Fallback: extract existing conversation from page DOM
-        const messageElements = document.querySelectorAll('.message-stream-item');
-        this.conversationData = [];
-        
-        messageElements.forEach((element, index) => {
-            const agentBadge = element.querySelector('.badge');
-            const agentName = element.querySelector('h6');
-            const messageContent = element.querySelector('p');
-            const timestamp = element.querySelector('.text-muted');
+            const agentColor = agentColors[message.agent_type] || 'secondary';
             
-            if (agentBadge && agentName && messageContent && timestamp) {
-                const message = {
-                    id: Date.now() - index,
-                    agent_name: agentBadge.textContent.trim(),
-                    agent_type: agentName.textContent.trim(),
-                    message_content: messageContent.textContent.trim(),
-                    timestamp: timestamp.textContent.trim(),
-                    source_url: 'https://perfectroofingteam.com'
-                };
-                this.conversationData.push(message);
-            }
-        });
-        
-        this.saveSyncState();
-    }
-    
-    addNewMessage(messageData, topic) {
-        // Add new message from API
-        const message = {
-            id: Date.now(),
-            agent_name: messageData.agent_name,
-            agent_type: messageData.agent_type,
-            message_content: messageData.message_content,
-            timestamp: messageData.timestamp,
-            source_url: messageData.source_url || 'https://perfectroofingteam.com'
-        };
-        
-        // Add to beginning of array (newest first)
-        this.conversationData.unshift(message);
-        
-        // Keep only last 16 messages
-        if (this.conversationData.length > this.maxMessagesPerRound) {
-            this.conversationData = this.conversationData.slice(0, this.maxMessagesPerRound);
-        }
-        
-        // Update topic if provided
-        if (topic && topic !== this.currentTopic) {
-            this.currentTopic = topic;
-            this.messageCount = 1; // Reset count for new topic
-            this.updateTopicDisplay();
-        } else {
-            this.messageCount++;
-        }
-        
-        // Check if we need to start a new round
-        if (this.messageCount >= this.maxMessagesPerRound) {
-            this.startNewRound();
-        }
-        
-        this.lastUpdateTime = Date.now();
-        this.saveSyncState();
-        this.updateDisplay();
-        this.triggerActivityPulse();
-    }
-    
-    startNewRound() {
-        // Reset for new round of 16 messages
-        this.messageCount = 0;
-        this.conversationData = []; // Clear for new topic
-        
-        // Trigger new topic generation if this is master
-        if (this.isMaster) {
-            this.requestNewTopic();
-        }
-    }
-    
-    async requestNewTopic() {
-        try {
-            const response = await fetch('/api/generate-topic', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.currentTopic = data.topic;
-                this.updateTopicDisplay();
-                this.saveSyncState();
-            }
-        } catch (error) {
-            console.log('Failed to generate new topic:', error);
-        }
-    }
-    
-    updateTimestamps() {
-        // Update all message timestamps to show staggered progression
-        const currentTime = new Date();
-        
-        this.conversationData.forEach((message, index) => {
-            // Each message is 2 minutes earlier than the current time
-            const messageTime = new Date(currentTime.getTime() - (index * 2 * 60000));
-            message.timestamp = this.formatTime(messageTime);
-        });
-        
-        this.saveSyncState();
-        this.updateDisplay();
-    }
-    
-    formatTime(date) {
-        return date.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-        });
-    }
-    
-    getLatestMessageTimestamp() {
-        if (this.conversationData.length > 0) {
-            return this.conversationData[0].timestamp;
-        }
-        return null;
-    }
-    
-    createInvestigationModal() {
-        // Create modal for short investigation display
-        const modalHTML = `
-            <div class="modal fade" id="investigationModal" tabindex="-1" aria-labelledby="investigationModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title" id="investigationModalLabel">
-                                <i class="fas fa-search me-2"></i>Short Investigation
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            html += `
+                <div class="message-item mb-3 fade-in" style="animation-delay: ${index * 0.1}s;">
+                    <div class="d-flex align-items-start">
+                        <div class="avatar bg-${agentColor} bg-opacity-10 rounded-circle p-2 me-3">
+                            <i class="fas fa-robot text-${agentColor}"></i>
                         </div>
-                        <div class="modal-body">
-                            <div id="investigationContent">
-                                <div class="text-center">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Loading investigation...</span>
-                                    </div>
-                                    <p class="mt-2">Generating investigation summary...</p>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-bold text-${agentColor}">${message.agent_name}</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-muted">${message.timestamp}</small>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="visitorIntel.investigateMessage(${message.id}, \`${message.message_content.replace(/`/g, '\\`')}\`, '${message.agent_type}', \`${topic}\`)">
+                                        <i class="fas fa-search me-1"></i>Investigate
+                                    </button>
                                 </div>
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" id="shareInvestigation">
-                                <i class="fas fa-share me-1"></i>Share Investigation
-                            </button>
+                            <span class="badge bg-${agentColor} bg-opacity-10 text-${agentColor} small mb-2">${message.agent_type}</span>
+                            <p class="mb-0">${message.message_content}</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
-        
-        // Add modal to body if it doesn't exist
-        if (!document.getElementById('investigationModal')) {
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-        }
-        
-        // Add event listener for share button
-        document.getElementById('shareInvestigation').addEventListener('click', () => {
-            this.shareInvestigation();
+            `;
         });
+        
+        container.innerHTML = html;
+        
+        // Auto-scroll to bottom
+        container.scrollTop = container.scrollHeight;
     }
     
-    async showInvestigation(messageId, messageContent, agentType) {
-        const modal = new bootstrap.Modal(document.getElementById('investigationModal'));
-        const content = document.getElementById('investigationContent');
-        
-        // Show loading state
-        content.innerHTML = `
-            <div class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading investigation...</span>
-                </div>
-                <p class="mt-2">Generating investigation summary...</p>
-            </div>
-        `;
-        
-        modal.show();
-        
+    async investigateMessage(messageId, messageContent, agentType, topic) {
         try {
-            // Try to get investigation from API
+            this.showInvestigationModal('Generating investigation...', []);
+            
             const response = await fetch('/api/investigation', {
                 method: 'POST',
                 headers: {
@@ -373,628 +194,299 @@ class APIIntegratedConversationFeed {
                     messageId: messageId,
                     messageContent: messageContent,
                     agentType: agentType,
-                    topic: this.currentTopic
+                    topic: topic
                 })
             });
             
-            if (response.ok) {
-                const data = await response.json();
-                this.displayInvestigation(data);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.updateInvestigationModal(data);
             } else {
-                // Fallback to generated investigation
-                this.generateFallbackInvestigation(messageContent, agentType);
+                this.updateInvestigationModal({
+                    title: 'Investigation Failed',
+                    sections: [{ title: 'Error', content: data.error || 'Unable to generate investigation' }],
+                    confidence: 0
+                });
             }
         } catch (error) {
-            console.log('Failed to load investigation from API:', error);
-            // Fallback to generated investigation
-            this.generateFallbackInvestigation(messageContent, agentType);
+            console.error('Investigation error:', error);
+            this.updateInvestigationModal({
+                title: 'Investigation Error',
+                sections: [{ title: 'Error', content: 'Failed to connect to investigation service' }],
+                confidence: 0
+            });
         }
     }
     
-    generateFallbackInvestigation(messageContent, agentType) {
-        // Generate a realistic investigation summary based on the message
-        const investigations = {
-            'Business AI Assistant': {
-                title: 'Business Analysis & Market Position',
-                sections: [
-                    {
-                        title: 'Service Quality Assessment',
-                        content: 'Perfect Roofing Team demonstrates exceptional service quality through their comprehensive approach to roofing solutions. Their commitment to using premium materials and employing certified contractors positions them as a market leader in the New Jersey roofing industry.'
-                    },
-                    {
-                        title: 'Competitive Advantages',
-                        content: 'Key differentiators include 24/7 emergency response capabilities, comprehensive warranty coverage, and a proven track record of customer satisfaction. Their local expertise in New Jersey weather patterns and building codes provides significant value to customers.'
-                    },
-                    {
-                        title: 'Business Recommendations',
-                        content: 'Continue focusing on quality craftsmanship and customer service excellence. Expand digital marketing efforts to reach more homeowners in need of roofing services. Consider partnerships with local insurance companies for storm damage restoration projects.'
-                    }
-                ]
-            },
-            'Marketing AI Expert': {
-                title: 'Marketing Strategy & Brand Analysis',
-                sections: [
-                    {
-                        title: 'Brand Positioning',
-                        content: 'Perfect Roofing Team has successfully positioned itself as a premium, reliable roofing contractor in the New Jersey market. Their emphasis on quality materials and professional installation resonates well with homeowners seeking long-term value.'
-                    },
-                    {
-                        title: 'Digital Presence',
-                        content: 'Strong online presence with positive customer reviews and comprehensive service descriptions. Website optimization and local SEO strategies are effectively driving qualified leads from homeowners in need of roofing services.'
-                    },
-                    {
-                        title: 'Marketing Opportunities',
-                        content: 'Leverage seasonal marketing campaigns during storm seasons. Develop case studies showcasing successful projects. Implement referral programs to capitalize on satisfied customer networks.'
-                    }
-                ]
-            },
-            'Customer Service AI': {
-                title: 'Customer Experience & Service Analysis',
-                sections: [
-                    {
-                        title: 'Service Excellence',
-                        content: 'Perfect Roofing Team excels in customer communication and project transparency. Their detailed documentation process and regular updates keep customers informed throughout the roofing project lifecycle.'
-                    },
-                    {
-                        title: 'Customer Satisfaction',
-                        content: 'High customer satisfaction rates driven by professional installation teams, quality materials, and comprehensive warranty coverage. Customers particularly appreciate the 24/7 emergency response capability.'
-                    },
-                    {
-                        title: 'Service Improvements',
-                        content: 'Continue investing in customer communication tools and project management systems. Expand customer education resources about roofing maintenance and care. Develop loyalty programs for repeat customers.'
-                    }
-                ]
-            },
-            'SEO AI Specialist': {
-                title: 'SEO Performance & Online Visibility',
-                sections: [
-                    {
-                        title: 'Search Engine Performance',
-                        content: 'Perfect Roofing Team maintains strong local search visibility for key roofing-related keywords in New Jersey. Their content strategy effectively targets homeowners searching for roofing contractors and emergency repair services.'
-                    },
-                    {
-                        title: 'Content Strategy',
-                        content: 'Well-optimized service pages and location-specific content drive qualified organic traffic. Regular content updates about roofing tips, maintenance, and industry insights establish authority in the roofing sector.'
-                    },
-                    {
-                        title: 'SEO Recommendations',
-                        content: 'Expand content marketing with seasonal roofing guides and maintenance tips. Optimize for voice search queries related to emergency roofing services. Build more local citations and industry partnerships for link building.'
-                    }
-                ]
-            }
-        };
+    showInvestigationModal(title, sections) {
+        // Remove existing modal
+        const existingModal = document.getElementById('investigationModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
         
-        const investigation = investigations[agentType] || investigations['Business AI Assistant'];
-        this.displayInvestigation({
-            title: investigation.title,
-            summary: `Comprehensive analysis of Perfect Roofing Team's ${investigation.title.toLowerCase()} based on current market conditions and industry best practices.`,
-            sections: investigation.sections,
-            messageContent: messageContent,
-            agentType: agentType,
-            timestamp: new Date().toLocaleString(),
-            confidence: Math.floor(Math.random() * 15) + 85 // 85-99% confidence
-        });
-    }
-    
-    displayInvestigation(data) {
-        const content = document.getElementById('investigationContent');
-        
-        content.innerHTML = `
-            <div class="investigation-summary">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="investigation-icon me-3">
-                        <i class="fas fa-search-plus text-primary" style="font-size: 2rem;"></i>
-                    </div>
-                    <div>
-                        <h4 class="mb-1">${data.title}</h4>
-                        <p class="text-muted mb-0">${data.summary}</p>
-                    </div>
-                </div>
-                
-                <div class="investigation-meta mb-4">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <small class="text-muted">
-                                <i class="fas fa-robot me-1"></i>
-                                Analyzed by: ${data.agentType}
-                            </small>
-                        </div>
-                        <div class="col-md-6 text-md-end">
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>
-                                Generated: ${data.timestamp}
-                            </small>
-                        </div>
-                    </div>
-                    <div class="row mt-2">
-                        <div class="col-12">
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar bg-success" style="width: ${data.confidence}%"></div>
-                            </div>
-                            <small class="text-muted">Confidence Level: ${data.confidence}%</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="investigation-sections">
-                    ${data.sections.map(section => `
-                        <div class="investigation-section mb-4">
-                            <h5 class="section-title">
-                                <i class="fas fa-chevron-right me-2 text-primary"></i>
-                                ${section.title}
+        const modalHtml = `
+            <div class="modal fade" id="investigationModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-search me-2"></i>Message Investigation
                             </h5>
-                            <p class="section-content">${section.content}</p>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
-                    `).join('')}
-                </div>
-                
-                <div class="investigation-footer mt-4 pt-3 border-top">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h6>Original Message Context:</h6>
-                            <blockquote class="blockquote-sm">
-                                <p class="mb-0 text-muted">"${data.messageContent}"</p>
-                            </blockquote>
-                        </div>
-                        <div class="col-md-4 text-md-end">
-                            <div class="investigation-actions">
-                                <button class="btn btn-outline-primary btn-sm me-2" onclick="window.conversationFeed.downloadInvestigation()">
-                                    <i class="fas fa-download me-1"></i>Download
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" onclick="window.conversationFeed.printInvestigation()">
-                                    <i class="fas fa-print me-1"></i>Print
-                                </button>
+                        <div class="modal-body" id="investigation-content">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">${title}</p>
                             </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" onclick="visitorIntel.downloadInvestigation()">
+                                <i class="fas fa-download me-1"></i>Download Report
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
         
-        // Store current investigation for sharing/downloading
-        this.currentInvestigation = data;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        this.investigationModal = new bootstrap.Modal(document.getElementById('investigationModal'));
+        this.investigationModal.show();
     }
     
-    shareInvestigation() {
-        if (this.currentInvestigation) {
-            const shareText = `Investigation Summary: ${this.currentInvestigation.title}\n\n${this.currentInvestigation.summary}\n\nView full analysis at: ${window.location.href}`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: `Investigation: ${this.currentInvestigation.title}`,
-                    text: shareText,
-                    url: window.location.href
-                });
-            } else {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(shareText).then(() => {
-                    alert('Investigation summary copied to clipboard!');
-                });
-            }
+    updateInvestigationModal(data) {
+        const content = document.getElementById('investigation-content');
+        if (!content) return;
+        
+        let html = `
+            <div class="investigation-report">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>${data.title}</h5>
+                    <span class="badge bg-success">${data.confidence}% Confidence</span>
+                </div>
+        `;
+        
+        if (data.sections && data.sections.length > 0) {
+            data.sections.forEach(section => {
+                html += `
+                    <div class="investigation-section mb-3">
+                        <h6 class="text-primary">${section.title}</h6>
+                        <p>${section.content}</p>
+                    </div>
+                `;
+            });
         }
+        
+        html += '</div>';
+        content.innerHTML = html;
     }
     
     downloadInvestigation() {
-        if (this.currentInvestigation) {
-            const content = `
-Investigation Summary
-====================
-
-Title: ${this.currentInvestigation.title}
-Generated: ${this.currentInvestigation.timestamp}
-Analyzed by: ${this.currentInvestigation.agentType}
-Confidence: ${this.currentInvestigation.confidence}%
-
-Summary:
-${this.currentInvestigation.summary}
-
-Detailed Analysis:
-${this.currentInvestigation.sections.map(section => `
-${section.title}
-${'='.repeat(section.title.length)}
-${section.content}
-`).join('\n')}
-
-Original Message:
-"${this.currentInvestigation.messageContent}"
-
-Generated by Perfect Roofing Team AI Analysis System
-            `;
+        const content = document.getElementById('investigation-content');
+        if (!content) return;
+        
+        const report = content.innerText;
+        const blob = new Blob([report], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `visitor-intel-investigation-${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    
+    async checkAPIStatus() {
+        try {
+            const response = await fetch('/api-status');
+            const data = await response.json();
             
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `investigation-${Date.now()}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
+            this.aiServicesStatus = {
+                openai: data.openai || false,
+                anthropic: data.anthropic || false,
+                perplexity: data.perplexity || false,
+                gemini: data.gemini || false
+            };
+            
+            this.updateStatusIndicators();
+        } catch (error) {
+            console.error('Error checking API status:', error);
         }
     }
     
-    printInvestigation() {
-        if (this.currentInvestigation) {
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Investigation: ${this.currentInvestigation.title}</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; padding: 20px; }
-                            h1, h2 { color: #333; }
-                            .meta { background: #f8f9fa; padding: 10px; margin: 10px 0; }
-                            .section { margin: 20px 0; }
-                            .confidence { background: #e7f3ff; padding: 10px; }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>${this.currentInvestigation.title}</h1>
-                        <div class="meta">
-                            <p><strong>Generated:</strong> ${this.currentInvestigation.timestamp}</p>
-                            <p><strong>Analyzed by:</strong> ${this.currentInvestigation.agentType}</p>
-                            <p><strong>Confidence:</strong> ${this.currentInvestigation.confidence}%</p>
-                        </div>
-                        <h2>Summary</h2>
-                        <p>${this.currentInvestigation.summary}</p>
-                        <h2>Detailed Analysis</h2>
-                        ${this.currentInvestigation.sections.map(section => `
-                            <div class="section">
-                                <h3>${section.title}</h3>
-                                <p>${section.content}</p>
-                            </div>
-                        `).join('')}
-                        <h2>Original Message Context</h2>
-                        <blockquote>"${this.currentInvestigation.messageContent}"</blockquote>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.print();
-        }
-    }
-    
-    // UI Creation Methods (abbreviated for space)
-    createLiveStatusBar() {
-        const statusBar = document.querySelector('.live-status-bar');
-        if (statusBar) {
-            statusBar.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <div class="live-indicator me-2"></div>
-                    <span class="fw-bold text-success">LIVE</span>
-                    <span class="ms-2 text-muted">AI Discussion in Progress</span>
-                    <div class="ms-auto d-flex align-items-center">
-                        <span class="badge bg-primary me-2" id="messageCount">${this.messageCount}/16</span>
-                        <span class="text-muted small" id="nextUpdate">Next update in <span id="countdown">45</span>s</span>
-                    </div>
-                </div>
-            `;
-        }
-    }
-    
-    createCountdownTimer() {
-        let countdown = 45;
-        setInterval(() => {
-            const countdownEl = document.getElementById('countdown');
-            if (countdownEl) {
-                countdownEl.textContent = countdown;
-                countdown--;
-                if (countdown < 0) countdown = 45;
-            }
-        }, 1000);
-    }
-    
-    createActivityPulse() {
-        const container = document.querySelector('.message-stream');
-        if (container && !container.querySelector('.activity-pulse')) {
-            container.insertAdjacentHTML('afterbegin', `
-                <div class="activity-pulse">
-                    <div class="pulse-ring"></div>
-                </div>
-            `);
-        }
-    }
-    
-    createAIServicesStatus() {
-        const statusContainer = document.querySelector('.ai-services-status');
+    updateStatusIndicators() {
+        // Update status indicators if they exist on page
+        const statusContainer = document.getElementById('api-status-indicators');
         if (statusContainer) {
+            const services = Object.entries(this.aiServicesStatus);
+            const allActive = services.every(([_, status]) => status);
+            
             statusContainer.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between">
-                    <span class="text-muted small">AI Services:</span>
-                    <div class="d-flex gap-2">
-                        ${this.agents.map(agent => `
-                            <span class="badge bg-${this.aiServicesStatus[agent.service] ? 'success' : 'secondary'}" 
-                                  id="status-${agent.service}">
-                                ${agent.id}
-                            </span>
-                        `).join('')}
-                    </div>
+                <span class="badge bg-${allActive ? 'success' : 'warning'}">
+                    <i class="fas fa-circle me-1"></i>
+                    ${allActive ? 'All AI Services Active' : 'Partial Service'}
+                </span>
+            `;
+        }
+    }
+    
+    updateAnalytics(data) {
+        // Update various analytics elements if they exist
+        const elements = {
+            'total-messages': data.messageCount,
+            'current-business': data.business?.name,
+            'conversation-count': 1
+        };
+        
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element && value !== undefined) {
+                element.textContent = value;
+            }
+        });
+    }
+    
+    displayError(message) {
+        const container = document.getElementById('live-conversation-messages') || 
+                         document.getElementById('conversation-feed') ||
+                         document.querySelector('.conversation-messages');
+        
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${message}
                 </div>
             `;
         }
     }
     
-    updateAIServicesDisplay() {
-        this.agents.forEach(agent => {
-            const statusEl = document.getElementById(`status-${agent.service}`);
-            if (statusEl) {
-                statusEl.className = `badge bg-${this.aiServicesStatus[agent.service] ? 'success' : 'secondary'}`;
-            }
-        });
-    }
-    
-    updateDisplay() {
-        const container = document.querySelector('.message-stream');
-        if (!container) return;
+    refreshConversation() {
+        console.log('Refreshing conversation data...');
         
-        // Clear existing messages
-        container.querySelectorAll('.message-stream-item').forEach(el => el.remove());
-        
-        // Add updated messages with investigation buttons
-        this.conversationData.forEach((message, index) => {
-            const messageEl = this.createMessageElement(message, index);
-            container.appendChild(messageEl);
-        });
-    }
-    
-    createMessageElement(message, index) {
-        const agent = this.agents.find(a => a.id === message.agent_name) || this.agents[0];
-        const messageEl = document.createElement('div');
-        messageEl.className = 'message-stream-item card mb-3 slide-up';
-        messageEl.innerHTML = `
-            <div class="card-body">
-                <div class="d-flex align-items-start">
-                    <div class="badge bg-${agent.color} me-3 mt-1">${message.agent_name}</div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-1 text-${agent.color}">${message.agent_type}</h6>
-                            <div class="d-flex align-items-center gap-2">
-                                <small class="text-muted timestamp">${message.timestamp}</small>
-                                <button class="btn btn-outline-primary btn-sm investigation-btn" 
-                                        onclick="window.conversationFeed.showInvestigation('${message.id}', '${message.message_content.replace(/'/g, "\\'")}', '${message.agent_type}')">
-                                    <i class="fas fa-search me-1"></i>Investigate
-                                </button>
-                            </div>
-                        </div>
-                        <p class="text-muted small mb-0">${message.agent_type} AI Agent • Live Discussion</p>
-                        <p class="mb-2 mt-2">${message.message_content}</p>
-                        <small class="text-muted">
-                            <i class="fas fa-link me-1"></i>
-                            Source Reference: <a href="${message.source_url}" target="_blank" class="text-primary">${message.source_url}</a>
-                        </small>
-                    </div>
-                </div>
-            </div>
-        `;
-        return messageEl;
-    }
-    
-    updateTopicDisplay() {
-        const topicEl = document.querySelector('.current-topic');
-        if (topicEl && this.currentTopic) {
-            topicEl.textContent = this.currentTopic;
+        if (this.pageType === 'homepage') {
+            this.loadFeaturedConversation();
+        } else if (this.pageType === 'dashboard' && this.businessId) {
+            this.loadBusinessConversation(this.businessId);
         }
-    }
-    
-    triggerActivityPulse() {
-        const pulse = document.querySelector('.activity-pulse');
-        if (pulse) {
-            pulse.style.animation = 'none';
+        
+        // Update status indicator if exists
+        const statusIndicator = document.getElementById('status-indicator');
+        if (statusIndicator) {
+            statusIndicator.innerHTML = '<i class="fas fa-sync fa-spin me-1"></i>REFRESHING';
+            statusIndicator.className = 'badge bg-warning';
+            
             setTimeout(() => {
-                pulse.style.animation = 'pulse 2s infinite';
-            }, 10);
+                statusIndicator.innerHTML = '<i class="fas fa-circle me-1"></i>LIVE';
+                statusIndicator.className = 'badge bg-success';
+            }, 2000);
         }
     }
     
-    // Sync methods
-    saveSyncState() {
-        const state = {
-            conversationData: this.conversationData,
-            currentTopic: this.currentTopic,
-            messageCount: this.messageCount,
-            lastUpdateTime: this.lastUpdateTime
-        };
-        localStorage.setItem(this.syncKey, JSON.stringify(state));
-    }
-    
-    loadSyncState() {
-        const saved = localStorage.getItem(this.syncKey);
-        if (saved) {
-            try {
-                const state = JSON.parse(saved);
-                this.conversationData = state.conversationData || [];
-                this.currentTopic = state.currentTopic || '';
-                this.messageCount = state.messageCount || 0;
-                this.lastUpdateTime = state.lastUpdateTime || Date.now();
-            } catch (error) {
-                console.log('Failed to load sync state:', error);
+    startPolling() {
+        if (!this.isPolling) return;
+        
+        // Poll for conversation updates
+        setInterval(() => {
+            if (this.pageType === 'homepage') {
+                this.loadFeaturedConversation();
+            } else if (this.pageType === 'dashboard' && this.businessId) {
+                this.loadBusinessConversation(this.businessId);
             }
-        }
+        }, this.pollInterval);
+        
+        // Poll for API status updates
+        setInterval(() => {
+            this.checkAPIStatus();
+        }, this.statusCheckInterval);
     }
     
-    setupCrossTabSync() {
-        window.addEventListener('storage', (e) => {
-            if (e.key === this.syncKey && !this.isMaster) {
-                this.loadSyncState();
-                this.updateDisplay();
-                this.updateTopicDisplay();
+    setupEventListeners() {
+        // Global refresh button
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('[onclick*="refreshConversation"]') || 
+                e.target.closest('[onclick*="refreshConversation"]')) {
+                e.preventDefault();
+                this.refreshConversation();
+            }
+        });
+        
+        // Page visibility change handling
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                this.refreshConversation();
             }
         });
     }
-    
-    initializeDashboard() {
-        // Dashboard-specific initialization
-        console.log('Dashboard initialized');
-    }
 }
 
-// Enhanced styles for investigation feature
-const apiIntegratedWithInvestigationStyles = `
-<style>
-/* Investigation button styling */
-.investigation-btn {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    transition: all 0.2s ease;
-}
+// Initialize the system
+let visitorIntel;
 
-.investigation-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* Investigation modal styling */
-.investigation-summary {
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.investigation-icon {
-    flex-shrink: 0;
-}
-
-.investigation-meta {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.375rem;
-    border-left: 4px solid #0d6efd;
-}
-
-.investigation-section {
-    padding: 1rem;
-    border: 1px solid #e9ecef;
-    border-radius: 0.375rem;
-    background-color: #ffffff;
-}
-
-.section-title {
-    color: #495057;
-    font-size: 1.1rem;
-    margin-bottom: 0.75rem;
-}
-
-.section-content {
-    color: #6c757d;
-    line-height: 1.6;
-    margin-bottom: 0;
-}
-
-.investigation-footer {
-    background-color: #f8f9fa;
-    margin: -1rem;
-    margin-top: 1rem;
-    padding: 1rem;
-}
-
-.blockquote-sm {
-    border-left: 3px solid #dee2e6;
-    padding-left: 1rem;
-    margin: 0.5rem 0;
-}
-
-.investigation-actions .btn {
-    font-size: 0.875rem;
-}
-
-/* Live status enhancements */
-.live-indicator {
-    width: 8px;
-    height: 8px;
-    background-color: #28a745;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-}
-
-.activity-pulse {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 20px;
-    height: 20px;
-    z-index: 10;
-}
-
-.pulse-ring {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #28a745;
-    border-radius: 50%;
-    animation: pulse-ring 2s infinite;
-}
-
-@keyframes pulse-ring {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(4);
-        opacity: 0;
-    }
-}
-
-/* Animations */
-@keyframes pulse {
-    0% { 
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% { 
-        transform: scale(1.1);
-        opacity: 0.7;
-    }
-    100% { 
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.slide-up {
-    animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-    from { 
-        transform: translateY(20px); 
-        opacity: 0; 
-    }
-    to { 
-        transform: translateY(0); 
-        opacity: 1; 
-    }
-}
-
-/* Progress bar animation */
-.progress-bar {
-    transition: width 1s linear;
-}
-
-/* Message hover effects */
-.message-stream-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.message-stream-item:hover .investigation-btn {
-    background-color: #0d6efd;
-    color: white;
-    border-color: #0d6efd;
-}
-</style>
-`;
-
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Add enhanced styles
-    document.head.insertAdjacentHTML('beforeend', apiIntegratedWithInvestigationStyles);
+    visitorIntel = new VisitorIntelConversationSystem();
     
-    // Initialize API-integrated conversation feed with investigation feature
-    window.conversationFeed = new APIIntegratedConversationFeed();
+    // Add CSS animations
+    if (!document.getElementById('visitor-intel-styles')) {
+        const style = document.createElement('style');
+        style.id = 'visitor-intel-styles';
+        style.textContent = `
+            .fade-in {
+                animation: fadeIn 0.5s ease-in forwards;
+                opacity: 0;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            .conversation-messages {
+                scroll-behavior: smooth;
+            }
+            
+            .message-item:hover {
+                background-color: rgba(0,0,0,0.02);
+                border-radius: 8px;
+                padding: 8px;
+                margin: -8px;
+                transition: all 0.2s ease;
+            }
+            
+            .investigation-report {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            
+            .investigation-section {
+                padding: 12px;
+                background-color: rgba(0,123,255,0.05);
+                border-left: 3px solid #007bff;
+                border-radius: 4px;
+            }
+        `;
+        document.head.appendChild(style);
+    }
     
-    // Disable auto-refresh to maintain real-time timestamps
-    console.log("Auto-refresh disabled to maintain real-time timestamps");
+    console.log('Visitor Intel conversation system initialized successfully');
 });
 
-// Export for manual initialization if needed
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = APIIntegratedConversationFeed;
+// Global functions for backward compatibility
+function refreshConversation() {
+    if (visitorIntel) {
+        visitorIntel.refreshConversation();
+    }
 }
+
+function investigateMessage(messageId, messageContent, agentType, topic) {
+    if (visitorIntel) {
+        visitorIntel.investigateMessage(messageId, messageContent, agentType, topic);
+    }
+}
+
+// Auto-refresh prevention message
+console.log('Auto-refresh disabled to maintain real-time timestamps');
