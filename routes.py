@@ -18,6 +18,17 @@ import uuid
 import logging
 import base64
 import random
+
+def has_premium_access(business):
+    """Check if business has access to premium features (social media, infographics, etc.)"""
+    # Enterprise, Pro, and Basic plans have premium access
+    if hasattr(business, 'plan_type') and business.plan_type in ['enterprise', 'pro', 'basic']:
+        return True
+    # Monthly subscribers have access
+    if hasattr(business, 'subscription_type') and business.subscription_type != 'credit':
+        return True
+    # Credit-only users don't have premium access
+    return False
 import time
 
 # Initialize AI conversation manager and payment handler
@@ -1317,8 +1328,15 @@ def social_media_dashboard(business_id):
     """Social media management dashboard for monthly subscribers"""
     business = Business.query.get_or_404(business_id)
     
-    # Check if monthly subscriber
-    if business.subscription_type == 'credit':
+    # Check if monthly subscriber or enterprise
+    if hasattr(business, 'plan_type') and business.plan_type in ['enterprise', 'pro', 'basic']:
+        # Enterprise, Pro, and Basic plans have social media access
+        pass
+    elif hasattr(business, 'subscription_type') and business.subscription_type != 'credit':
+        # Monthly subscribers have access
+        pass
+    else:
+        # Credit-only users need to upgrade
         flash('Social media features are only available for monthly subscribers. Please upgrade your plan.', 'warning')
         return redirect(url_for('subscription_upgrade_page', business_id=business_id))
     
@@ -1338,8 +1356,8 @@ def schedule_social_posts(business_id):
     try:
         business = Business.query.get_or_404(business_id)
         
-        # Check if monthly subscriber
-        if business.subscription_type == 'credit':
+        # Check if has premium access
+        if not has_premium_access(business):
             return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
         
         selected_platforms = request.form.getlist('platforms')
@@ -1371,8 +1389,8 @@ def add_custom_post(business_id):
     try:
         business = Business.query.get_or_404(business_id)
         
-        # Check if monthly subscriber
-        if business.subscription_type == 'credit':
+        # Check if has premium access
+        if not has_premium_access(business):
             return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
         
         platform = request.form.get('platform')
@@ -1414,8 +1432,8 @@ def generate_infographic(business_id, conversation_id):
     try:
         business = Business.query.get_or_404(business_id)
         
-        # Check if monthly subscriber
-        if business.subscription_type == 'credit':
+        # Check if has premium access
+        if not has_premium_access(business):
             flash('Infographic generation is only available for monthly subscribers.', 'warning')
             return redirect(url_for('subscription_upgrade_page', business_id=business_id))
         
@@ -1458,8 +1476,8 @@ def social_media_setup(business_id):
     """One-click social media setup page"""
     business = Business.query.get_or_404(business_id)
     
-    # Check if monthly subscriber
-    if business.subscription_type == 'credit':
+    # Check if has premium access
+    if not has_premium_access(business):
         flash('Auto-posting is only available for monthly subscribers. Please upgrade your plan.', 'warning')
         return redirect(url_for('subscription_upgrade_page', business_id=business_id))
     
@@ -1477,8 +1495,8 @@ def connect_social_accounts(business_id):
     try:
         business = Business.query.get_or_404(business_id)
         
-        # Check if monthly subscriber
-        if business.subscription_type == 'credit':
+        # Check if has premium access
+        if not has_premium_access(business):
             return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
         
         # Get selected platforms (simplified - in production would use OAuth)
@@ -1513,7 +1531,7 @@ def get_posting_preview(business_id):
     try:
         business = Business.query.get_or_404(business_id)
         
-        if business.subscription_type == 'credit':
+        if not has_premium_access(business):
             return jsonify({'success': False, 'error': 'Feature only available for monthly subscribers'})
         
         preview = auto_scheduler.get_posting_preview(business_id)
