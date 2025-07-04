@@ -189,7 +189,7 @@ class LiveConversationManager {
         };
         
         const agentColor = agentColors[message.agent_name] || 'secondary';
-        const timestamp = new Date(message.timestamp).toLocaleTimeString();
+        const timestamp = new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
         
         return `
             <div class="message-card card mb-3 border-0 shadow-sm" data-message-id="${message.id}">
@@ -239,8 +239,8 @@ class LiveConversationManager {
                 message_id: messageId
             });
             
-            if (response.status === 'success') {
-                this.displayInvestigationModal(response.investigation);
+            if (response.success) {
+                this.displayInvestigationModal(response);
             } else {
                 throw new Error('Investigation request failed');
             }
