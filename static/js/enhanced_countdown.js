@@ -25,7 +25,8 @@ class EnhancedCountdownTimer {
                 </div>
                 <div class="countdown-display">
                     <div class="time-display">
-                        <span class="countdown-time" id="countdown-time">--:--:--</span>
+                        <span class="countdown-time" id="countdown-time">--:--</span>
+                        <small style="font-size: 0.8em; color: rgba(255,255,255,0.8); margin-left: 8px;">min:sec</small>
                     </div>
                     <div class="time-info">
                         <small>Local time: <span id="local-time">--:--:--</span></small>
@@ -160,11 +161,12 @@ class EnhancedCountdownTimer {
     formatRemainingText(seconds) {
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
         
         if (hours > 0) {
-            return `${hours}h ${minutes}m remaining`;
+            return `${hours}h ${minutes}m ${secs}s remaining`;
         } else if (minutes > 0) {
-            return `${minutes} minutes remaining`;
+            return `${minutes} minutes ${secs} seconds remaining`;
         } else {
             return `${seconds} seconds remaining`;
         }
