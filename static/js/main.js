@@ -798,7 +798,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Always initialize live conversation manager if container exists
-    if (document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container')) {
+    if (document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container, .live-conversation-stream')) {
         console.log('[Main] Conversation container detected, initializing live conversation...');
         window.liveConversationManager = new LiveConversationManager();
     }

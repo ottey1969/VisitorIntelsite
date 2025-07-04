@@ -200,10 +200,7 @@ def register_business():
             flash('A business with this email already exists.', 'error')
             return redirect(url_for('index'))
         
-        # Create share URL
-        share_url = f"https://ai-conversations.com/showcase/{name.lower().replace(' ', '-')}-{uuid.uuid4().hex[:8]}"
-        
-        # Create new business
+        # Create new business (share URL will be set after conversation creation)
         business = Business(
             name=name,
             website=website,
@@ -213,13 +210,13 @@ def register_business():
             email=email,
             industry=industry,
             credits_remaining=0,  # Start with 0 credits, need to purchase
-            share_url=share_url
+            share_url=""  # Will be updated after conversation creation
         )
         
         db.session.add(business)
         db.session.commit()
         
-        flash(f'Business "{name}" registered successfully! Your share URL: {share_url}', 'success')
+        flash(f'Business "{name}" registered successfully! Check your dashboard for your share URL.', 'success')
         return redirect(url_for('business_dashboard', business_id=business.id))
         
     except Exception as e:
@@ -431,7 +428,7 @@ def sitemap():
     sitemap_xml = '''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-        <loc>https://ai-conversations.com/</loc>
+        <loc>{request.host_url}</loc>
         <lastmod>{}</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
@@ -440,7 +437,7 @@ def sitemap():
     for conversation in public_conversations:
         sitemap_xml += '''
     <url>
-        <loc>https://ai-conversations.com/public/conversation/{}</loc>
+        <loc>{request.host_url}public/conversation/{}</loc>
         <lastmod>{}</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
@@ -479,7 +476,7 @@ User-agent: facebookexternalhit
 Allow: /
 Allow: /public/conversation/
 
-Sitemap: https://ai-conversations.com/sitemap.xml'''
+Sitemap: {request.host_url}sitemap.xml'''
     
     response = make_response(robots_content)
     response.headers["Content-Type"] = "text/plain"
