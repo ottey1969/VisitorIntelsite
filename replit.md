@@ -113,6 +113,12 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 
 ## Recent Changes
 - **July 04, 2025**: Enhanced 4-API Conversation System with Local Timezone Support implemented
+- **July 04, 2025**: Critical UI and UX improvements completed
+  - **Showcase URL Fix**: Changed white text to dark text for proper readability in business dashboard
+  - **Investigation System**: Updated API response handling and confirmed full functionality with detailed business analysis
+  - **Countdown Timer**: Added enhanced countdown display to business dashboard pages (now shows on both homepage and dashboard)
+  - **Message Timestamps**: Improved local time formatting with HH:MM:SS display for better user experience
+  - **API Integration**: Confirmed all 4 APIs (OpenAI, Anthropic, Perplexity, Gemini) working correctly with investigation feature
 - **Reliable 24/7 Operation**: Fixed server timeouts and conversation gaps with 30-minute precise scheduling
 - **Local Timezone Integration**: Automatic IP-based timezone detection and conversion for all time displays  
 - **Professional Countdown Timer**: Real-time countdown with progress bar and local time formatting
