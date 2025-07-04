@@ -2198,10 +2198,16 @@ def enhanced_conversation_status():
 
 @app.route('/api/countdown')
 def conversation_countdown():
-    """Get conversation countdown information"""
+    """Get conversation countdown information with local timezone"""
     try:
-        from enhanced_conversation_system import get_countdown_info
-        return jsonify(get_countdown_info())
+        from enhanced_conversation_system import enhanced_system
+        
+        # Get user's IP address for timezone detection
+        user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if user_ip and ',' in user_ip:
+            user_ip = user_ip.split(',')[0].strip()
+            
+        return jsonify(enhanced_system.get_countdown_info(user_ip))
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

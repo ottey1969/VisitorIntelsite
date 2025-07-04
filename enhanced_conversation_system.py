@@ -36,6 +36,7 @@ import schedule
 import requests
 from models import Business, Conversation, ConversationMessage, db
 from app import app
+from geo_language_detector import GeoLanguageDetector
 
 # Configure logging
 logging.basicConfig(
@@ -53,6 +54,7 @@ class Enhanced4APIConversationSystem:
         self.next_conversation_time = None
         self.message_queue = []
         self.socketio = None
+        self.geo_detector = GeoLanguageDetector()
         
         # API Configuration
         self.api_keys = {
@@ -106,6 +108,32 @@ class Enhanced4APIConversationSystem:
         
         # Schedule next conversation
         self.schedule_next_conversation()
+        
+    def get_user_timezone(self, request_ip=None):
+        """Get user's timezone based on IP or default to system timezone"""
+        try:
+            if request_ip:
+                country_code = self.geo_detector.detect_country_from_ip(request_ip)
+                if country_code:
+                    config = self.geo_detector.get_localized_config(country_code)
+                    return pytz.timezone(config.get('timezone', 'UTC'))
+            
+            # Fallback to system timezone
+            return pytz.timezone('UTC')
+        except:
+            return pytz.timezone('UTC')
+            
+    def convert_to_local_time(self, utc_time, user_timezone=None):
+        """Convert UTC time to user's local timezone"""
+        if user_timezone is None:
+            user_timezone = self.get_user_timezone()
+            
+        if utc_time.tzinfo is None:
+            utc_time = pytz.UTC.localize(utc_time)
+        elif utc_time.tzinfo != pytz.UTC:
+            utc_time = utc_time.astimezone(pytz.UTC)
+            
+        return utc_time.astimezone(user_timezone)
         
     def setup_socketio(self, socketio):
         """Setup SocketIO for real-time updates"""
@@ -532,18 +560,29 @@ Provide a professional, insightful response about {topic}. Keep it conversationa
             }
         }
         
-    def get_countdown_info(self) -> dict:
-        """Get countdown information"""
+    def get_countdown_info(self, request_ip=None) -> dict:
+        """Get countdown information with local timezone conversion"""
         if not self.next_conversation_time:
             return {'error': 'No conversation scheduled'}
             
-        remaining = self.next_conversation_time - datetime.now()
+        # Get user timezone
+        user_timezone = self.get_user_timezone(request_ip)
+        
+        # Convert to local time
+        local_next_time = self.convert_to_local_time(self.next_conversation_time, user_timezone)
+        
+        # Calculate remaining time
+        now_utc = datetime.now()
+        remaining = self.next_conversation_time - now_utc
         
         return {
             'state': self.conversation_state,
             'remaining_seconds': max(0, int(remaining.total_seconds())),
-            'next_time': self.next_conversation_time.isoformat(),
-            'formatted_time': self.next_conversation_time.strftime('%H:%M:%S')
+            'next_time_utc': self.next_conversation_time.isoformat(),
+            'next_time_local': local_next_time.isoformat(),
+            'formatted_time_local': local_next_time.strftime('%H:%M:%S'),
+            'timezone': str(user_timezone),
+            'timezone_offset': local_next_time.strftime('%z')
         }
 
 # Global system instance
