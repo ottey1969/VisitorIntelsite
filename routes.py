@@ -2183,28 +2183,56 @@ def api_live_conversation_latest_backend():
         }), 500
 
 
-# Enhanced 4-API Conversation System Routes
+# Enhanced 4-API Conversation System Routes (Disabled)
 @app.route('/api/enhanced-status')
 def enhanced_conversation_status():
-    """Get enhanced conversation system status"""
-    try:
-        from enhanced_conversation_system import get_enhanced_status
-        return jsonify(get_enhanced_status())
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Get enhanced conversation system status (disabled)"""
+    return jsonify({
+        'enhanced_system_available': False,
+        'message': 'Enhanced system is being rebuilt for better integration'
+    })
+
 
 @app.route('/api/countdown')
-def conversation_countdown():
-    """Get conversation countdown information with local timezone"""
+def get_countdown():
+    """Get countdown information for next conversation"""
     try:
-        from enhanced_conversation_system import enhanced_system
+        from datetime import datetime, timedelta
+        import pytz
         
-        # Get user's IP address for timezone detection
-        user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if user_ip and ',' in user_ip:
-            user_ip = user_ip.split(',')[0].strip()
-            
-        return jsonify(enhanced_system.get_countdown_info(user_ip))
+        # Get the last conversation time
+        last_conversation = Conversation.query.order_by(Conversation.id.desc()).first()
+        
+        if last_conversation:
+            # Calculate next conversation time (30 minutes after last one)
+            next_time = last_conversation.created_at + timedelta(minutes=30)
+        else:
+            # If no conversations, next one in 5 minutes
+            next_time = datetime.utcnow() + timedelta(minutes=5)
+        
+        # Convert to UTC if needed
+        if next_time.tzinfo is None:
+            next_time = pytz.UTC.localize(next_time)
+        
+        # Calculate countdown
+        now = pytz.UTC.localize(datetime.utcnow())
+        time_diff = next_time - now
+        
+        if time_diff.total_seconds() > 0:
+            remaining_seconds = int(time_diff.total_seconds())
+            state = 'waiting'
+        else:
+            remaining_seconds = 0
+            state = 'active'
+        
+        return jsonify({
+            'remaining_seconds': remaining_seconds,
+            'next_time_local': next_time.isoformat(),
+            'current_time': now.isoformat(),
+            'state': state,
+            'conversation_interval_minutes': 30
+        })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

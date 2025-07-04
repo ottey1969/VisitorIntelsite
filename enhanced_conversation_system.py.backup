@@ -1,75 +1,499 @@
-#!/usr/bin/env python3
-"""
-Enhanced Visitor Intel 4-API Conversation System
-===============================================
+# Enhanced 4-API Conversation System - Direct Integration
+# This file integrates with the existing Visitor Intel platform
 
-Real-time AI conversation system using 4 APIs:
-- OpenAI GPT-4o
-- Anthropic Claude Sonnet 4  
-- Perplexity AI
-- Google Gemini
-
-Features:
-- 30-minute conversation rounds (16 messages per round)
-- Countdown timer between conversations
-- Unpredictable 1-2 minute message intervals
-- Real-time WebSocket updates
-- Professional user experience
-- Robust error handling and fallbacks
-"""
-
-import os
-import sys
-import time
-import json
-import sqlite3
-import logging
-import threading
 import asyncio
-from datetime import datetime, timedelta
+import aiohttp
+import json
+import time
 import random
-from typing import Dict, List, Optional, Tuple
-import pytz
-from flask import Flask, render_template, jsonify, request
-from flask_socketio import SocketIO, emit
-import schedule
+import threading
+import logging
 import requests
+from datetime import datetime, timedelta
+from flask import request, jsonify
+from flask_socketio import emit
 from models import Business, Conversation, ConversationMessage, db
 from app import app
-from geo_language_detector import GeoLanguageDetector
+import os
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Enhanced4APIConversationSystem:
-    """Enhanced conversation system with 4 AI APIs and countdown timers"""
-    
-    def __init__(self):
+    def __init__(self, app, socketio):
+        self.app = app
+        self.socketio = socketio
         self.running = False
+        self.conversation_active = False
         self.current_conversation_id = None
-        self.conversation_state = "waiting"  # waiting, active, completed
+        self.message_count = 0
+        self.round_number = 1
         self.next_conversation_time = None
-        self.message_queue = []
-        self.socketio = None
-        self.geo_detector = GeoLanguageDetector()
+        self.conversation_thread = None
         
         # API Configuration
         self.api_keys = {
-            'openai': os.getenv('OPENAI_API_KEY'),
-            'anthropic': os.getenv('ANTHROPIC_API_KEY'),
-            'perplexity': os.getenv('PERPLEXITY_API_KEY'),
-            'gemini': os.getenv('GEMINI_API_KEY')
+            'openai': os.environ.get('OPENAI_API_KEY'),
+            'anthropic': os.environ.get('ANTHROPIC_API_KEY'),
+            'perplexity': os.environ.get('PERPLEXITY_API_KEY'),
+            'gemini': os.environ.get('GEMINI_API_KEY')
         }
         
-        # AI Agents with 4 APIs (4 messages per round)
-        self.ai_agents = [
-            {
-                'name': 'Business AI Assistant',
-                'provider': 'openai',
-                'model': 'gpt-4o',
+        # AI Agents Configuration
+        self.agents = {
+            'Business AI Assistant': {
+                'api': 'openai',
+                'model': 'gpt-4',
+                'role': 'Business strategy and operations expert',
+                'type': 'openai'
+            },
+            'SEO AI Specialist': {
+                'api': 'anthropic', 
+                'model': 'claude-3-sonnet-20240229',
+                'role': 'SEO and search engine optimization specialist',
+                'type': 'anthropic'
+            },
+            'Customer Service AI': {
+                'api': 'perplexity',
+                'model': 'llama-3.1-sonar-small-128k-online',
+                'role': 'Customer experience and service expert',
+                'type': 'perplexity'
+            },
+            'Marketing AI Expert': {
+                'api': 'gemini',
+                'model': 'gemini-pro',
+                'role': 'Marketing and brand positioning specialist',
+                'type': 'gemini'
+            }
+        }
+        
+        # Perfect Roofing Team conversation topics
+        self.conversation_topics = [
+            "Emergency roof repair services and rapid response protocols",
+            "Quality roofing materials and professional installation standards", 
+            "New Jersey local roofing expertise and weather considerations",
+            "Commercial and residential roofing solutions comparison",
+            "Roof inspection services and preventive maintenance programs",
+            "Insurance claims assistance and storm damage assessment",
+            "Energy efficient roofing options and cost savings analysis",
+            "Roofing warranty programs and customer satisfaction guarantees",
+            "Seasonal roofing maintenance and preparation strategies",
+            "Modern roofing technology and innovative installation methods",
+            "Local building codes compliance and permit requirements",
+            "Roofing contractor licensing and professional certifications",
+            "Customer testimonials and successful project case studies",
+            "Roofing material selection guide and durability comparisons",
+            "Emergency contact procedures and 24/7 availability services"
+        ]
+        
+        self.setup_routes()
+        
+    def setup_routes(self):
+        """Setup Flask routes for the enhanced system"""
+        
+        @self.app.route('/api/enhanced-conversation/status')
+        def get_enhanced_conversation_status():
+            """Get current conversation status and countdown"""
+            try:
+                current_time = datetime.now()
+                
+                if self.next_conversation_time is None:
+                    # Set next conversation time to now + 30 minutes
+                    self.next_conversation_time = current_time + timedelta(minutes=30)
+                
+                time_remaining = self.next_conversation_time - current_time
+                
+                if time_remaining.total_seconds() <= 0:
+                    # Time to start new conversation
+                    if not self.conversation_active:
+                        self.start_new_conversation()
+                    time_remaining = timedelta(0)
+                
+                status = {
+                    'conversation_active': self.conversation_active,
+                    'current_round': self.round_number,
+                    'message_count': self.message_count,
+                    'time_remaining_seconds': max(0, int(time_remaining.total_seconds())),
+                    'next_conversation_time': self.next_conversation_time.strftime('%I:%M:%S %p') if self.next_conversation_time else None,
+                    'local_time': current_time.strftime('%I:%M:%S %p'),
+                    'system_running': self.running,
+                    'api_status': {
+                        'openai': bool(self.api_keys['openai']),
+                        'anthropic': bool(self.api_keys['anthropic']),
+                        'perplexity': bool(self.api_keys['perplexity']),
+                        'gemini': bool(self.api_keys['gemini'])
+                    }
+                }
+                
+                return jsonify(status)
+                
+            except Exception as e:
+                logger.error(f"Error getting conversation status: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/enhanced-conversation/messages')
+        def get_enhanced_conversation_messages():
+            """Get current conversation messages with real timestamps"""
+            try:
+                # Get Perfect Roofing Team business
+                perfect_roofing = Business.query.filter_by(name="Perfect Roofing Team").first()
+                if not perfect_roofing:
+                    return jsonify({'messages': []})
+                
+                # Get latest conversation
+                latest_conversation = Conversation.query.filter_by(
+                    business_id=perfect_roofing.id
+                ).order_by(Conversation.created_at.desc()).first()
+                
+                if not latest_conversation:
+                    return jsonify({'messages': []})
+                
+                # Get messages with proper timestamps
+                messages = []
+                for msg in latest_conversation.messages:
+                    # Format timestamp properly
+                    formatted_time = msg.created_at.strftime('%I:%M:%S %p')
+                    
+                    messages.append({
+                        'id': msg.id,
+                        'agent_name': msg.ai_agent_name,
+                        'agent_type': msg.ai_agent_type,
+                        'message_text': msg.content,
+                        'timestamp': formatted_time,
+                        'round_number': self.round_number,
+                        'message_order': msg.message_order
+                    })
+                
+                return jsonify({'messages': messages})
+                
+            except Exception as e:
+                logger.error(f"Error getting messages: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/enhanced-conversation/start', methods=['POST'])
+        def manual_start_enhanced_conversation():
+            """Manually start a new conversation"""
+            try:
+                if not self.conversation_active:
+                    self.start_new_conversation()
+                    return jsonify({'success': True, 'message': 'Enhanced conversation started'})
+                else:
+                    return jsonify({'success': False, 'message': 'Conversation already active'})
+            except Exception as e:
+                logger.error(f"Error starting conversation: {e}")
+                return jsonify({'error': str(e)}), 500
+    
+    def start_new_conversation(self):
+        """Start a new conversation with Perfect Roofing Team"""
+        try:
+            with self.app.app_context():
+                # Get Perfect Roofing Team business
+                perfect_roofing = Business.query.filter_by(name="Perfect Roofing Team").first()
+                if not perfect_roofing:
+                    logger.error("Perfect Roofing Team not found")
+                    return
+                
+                # Select random topic
+                topic = random.choice(self.conversation_topics)
+                
+                # Create new conversation
+                conversation = Conversation(
+                    business_id=perfect_roofing.id,
+                    topic=topic,
+                    status='active',
+                    created_at=datetime.now()
+                )
+                db.session.add(conversation)
+                db.session.commit()
+                
+                self.current_conversation_id = conversation.id
+                self.conversation_active = True
+                self.message_count = 0
+                self.round_number = 1
+                
+                # Generate 16 messages (4 rounds of 4 messages each)
+                self.generate_conversation_messages(conversation.id, perfect_roofing, topic)
+                
+                # Mark conversation as completed
+                conversation.status = 'completed'
+                db.session.commit()
+                
+                self.conversation_active = False
+                self.next_conversation_time = datetime.now() + timedelta(minutes=30)
+                
+                logger.info(f"Enhanced conversation completed: {topic}")
+                
+        except Exception as e:
+            logger.error(f"Error starting conversation: {e}")
+    
+    def generate_conversation_messages(self, conversation_id, business, topic):
+        """Generate 16 messages for the conversation"""
+        agents = list(self.agents.keys())
+        
+        for round_num in range(1, 5):  # 4 rounds
+            for agent_index, agent_name in enumerate(agents):
+                try:
+                    # Generate message content
+                    agent_config = self.agents[agent_name]
+                    message_content = self.generate_ai_message(agent_config, business, topic, round_num)
+                    
+                    # Create message in database
+                    message = ConversationMessage(
+                        conversation_id=conversation_id,
+                        ai_agent_name=agent_name,
+                        ai_agent_type=agent_config['type'],
+                        content=message_content,
+                        message_order=self.message_count + 1,
+                        created_at=datetime.now()
+                    )
+                    db.session.add(message)
+                    db.session.commit()
+                    
+                    self.message_count += 1
+                    
+                    # Emit real-time update via SocketIO
+                    self.socketio.emit('new_message', {
+                        'agent_name': agent_name,
+                        'agent_type': agent_config['type'],
+                        'content': message_content,
+                        'timestamp': message.created_at.strftime('%I:%M:%S %p'),
+                        'round': round_num,
+                        'message_number': self.message_count
+                    })
+                    
+                    # Wait between messages for realistic timing
+                    time.sleep(random.randint(30, 90))  # 30-90 seconds between messages
+                    
+                except Exception as e:
+                    logger.error(f"Error generating message for {agent_name}: {e}")
+                    # Create fallback message
+                    fallback_content = f"Perfect Roofing Team provides professional {topic.lower()} with quality service and customer satisfaction."
+                    
+                    message = ConversationMessage(
+                        conversation_id=conversation_id,
+                        ai_agent_name=agent_name,
+                        ai_agent_type=agent_config['type'],
+                        content=fallback_content,
+                        message_order=self.message_count + 1,
+                        created_at=datetime.now()
+                    )
+                    db.session.add(message)
+                    db.session.commit()
+                    
+                    self.message_count += 1
+    
+    def generate_ai_message(self, agent_config, business, topic, round_num):
+        """Generate a message from an AI agent"""
+        try:
+            if agent_config['api'] == 'openai':
+                return self.call_openai_api(agent_config, business, topic, round_num)
+            elif agent_config['api'] == 'anthropic':
+                return self.call_anthropic_api(agent_config, business, topic, round_num)
+            elif agent_config['api'] == 'perplexity':
+                return self.call_perplexity_api(agent_config, business, topic, round_num)
+            elif agent_config['api'] == 'gemini':
+                return self.call_gemini_api(agent_config, business, topic, round_num)
+            else:
+                return f"Perfect Roofing Team offers exceptional {topic.lower()} services with professional quality and customer satisfaction."
+        except Exception as e:
+            logger.error(f"Error generating AI message: {e}")
+            return f"Perfect Roofing Team provides reliable {topic.lower()} solutions with expertise and commitment to customer satisfaction."
+    
+    def call_openai_api(self, agent_config, business, topic, round_num):
+        """Call OpenAI API"""
+        if not self.api_keys['openai']:
+            return f"Perfect Roofing Team offers exceptional {topic.lower()} services with professional quality and customer satisfaction."
+        
+        try:
+            headers = {
+                'Authorization': f'Bearer {self.api_keys["openai"]}',
+                'Content-Type': 'application/json'
+            }
+            
+            data = {
+                'model': 'gpt-4',
+                'messages': [
+                    {
+                        'role': 'system',
+                        'content': f'You are a {agent_config["role"]} discussing Perfect Roofing Team, a professional roofing contractor in New Jersey. Focus on {topic}. Keep responses to 1-2 sentences.'
+                    },
+                    {
+                        'role': 'user', 
+                        'content': f'Discuss Perfect Roofing Team\'s expertise in {topic}.'
+                    }
+                ],
+                'max_tokens': 150,
+                'temperature': 0.7
+            }
+            
+            response = requests.post('https://api.openai.com/v1/chat/completions', 
+                                   headers=headers, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result['choices'][0]['message']['content'].strip()
+            else:
+                logger.error(f"OpenAI API error: {response.status_code}")
+                return f"Perfect Roofing Team offers professional {topic.lower()} solutions with quality materials and expert installation."
+                
+        except Exception as e:
+            logger.error(f"OpenAI API call failed: {e}")
+            return f"Perfect Roofing Team provides reliable {topic.lower()} services with 10+ years of experience in New Jersey."
+    
+    def call_anthropic_api(self, agent_config, business, topic, round_num):
+        """Call Anthropic API"""
+        if not self.api_keys['anthropic']:
+            return f"This {topic.lower()} expertise positions Perfect Roofing Team as a trusted industry leader in Lodi, New Jersey."
+        
+        try:
+            headers = {
+                'x-api-key': self.api_keys['anthropic'],
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01'
+            }
+            
+            data = {
+                'model': 'claude-3-sonnet-20240229',
+                'max_tokens': 150,
+                'messages': [
+                    {
+                        'role': 'user',
+                        'content': f'As an {agent_config["role"]}, discuss Perfect Roofing Team\'s {topic} expertise. Focus on their industry leadership in New Jersey. 1-2 sentences only.'
+                    }
+                ]
+            }
+            
+            response = requests.post('https://api.anthropic.com/v1/messages', 
+                                   headers=headers, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result['content'][0]['text'].strip()
+            else:
+                logger.error(f"Anthropic API error: {response.status_code}")
+                return f"This {topic.lower()} expertise positions Perfect Roofing Team as a trusted industry leader in Lodi, New Jersey."
+                
+        except Exception as e:
+            logger.error(f"Anthropic API call failed: {e}")
+            return f"Perfect Roofing Team's {topic.lower()} expertise demonstrates their commitment to excellence and industry standards."
+    
+    def call_perplexity_api(self, agent_config, business, topic, round_num):
+        """Call Perplexity API"""
+        if not self.api_keys['perplexity']:
+            return f"Customers choose Perfect Roofing Team for reliable {topic.lower()} solutions and responsive support throughout the process."
+        
+        try:
+            headers = {
+                'Authorization': f'Bearer {self.api_keys["perplexity"]}',
+                'Content-Type': 'application/json'
+            }
+            
+            data = {
+                'model': 'llama-3.1-sonar-small-128k-online',
+                'messages': [
+                    {
+                        'role': 'system',
+                        'content': f'You are a {agent_config["role"]} discussing Perfect Roofing Team\'s {topic}. Focus on customer experience and satisfaction. Keep responses to 1-2 sentences.'
+                    },
+                    {
+                        'role': 'user',
+                        'content': f'How does Perfect Roofing Team excel in {topic} from a customer service perspective?'
+                    }
+                ],
+                'max_tokens': 150,
+                'temperature': 0.7
+            }
+            
+            response = requests.post('https://api.perplexity.ai/chat/completions', 
+                                   headers=headers, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result['choices'][0]['message']['content'].strip()
+            else:
+                logger.error(f"Perplexity API error: {response.status_code}")
+                return f"Customers choose Perfect Roofing Team for reliable {topic.lower()} solutions and responsive support throughout the process."
+                
+        except Exception as e:
+            logger.error(f"Perplexity API call failed: {e}")
+            return f"Perfect Roofing Team prioritizes customer satisfaction in all {topic.lower()} projects with transparent communication."
+    
+    def call_gemini_api(self, agent_config, business, topic, round_num):
+        """Call Gemini API"""
+        if not self.api_keys['gemini']:
+            return f"Perfect Roofing Team's {topic.lower()} approach combines innovative marketing strategies with proven results for maximum visibility."
+        
+        try:
+            headers = {
+                'Content-Type': 'application/json'
+            }
+            
+            data = {
+                'contents': [
+                    {
+                        'parts': [
+                            {
+                                'text': f'As a {agent_config["role"]}, discuss Perfect Roofing Team\'s {topic} from a marketing perspective. Focus on their competitive advantages. 1-2 sentences only.'
+                            }
+                        ]
+                    }
+                ]
+            }
+            
+            response = requests.post(f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={self.api_keys["gemini"]}', 
+                                   headers=headers, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result['candidates'][0]['content']['parts'][0]['text'].strip()
+            else:
+                logger.error(f"Gemini API error: {response.status_code}")
+                return f"Perfect Roofing Team's {topic.lower()} approach combines innovative marketing strategies with proven results for maximum visibility."
+                
+        except Exception as e:
+            logger.error(f"Gemini API call failed: {e}")
+            return f"Perfect Roofing Team leverages advanced {topic.lower()} techniques to deliver exceptional value and build lasting customer relationships."
+
+# Global enhanced system instance
+enhanced_system = None
+
+def start_enhanced_system(app=None, socketio_instance=None):
+    """Start the enhanced conversation system"""
+    global enhanced_system
+    try:
+        if app is None or socketio_instance is None:
+            from app import app, socketio
+            socketio_instance = socketio
+        
+        enhanced_system = Enhanced4APIConversationSystem(app, socketio_instance)
+        enhanced_system.running = True
+        logger.info("Enhanced 4-API conversation system started successfully")
+        return enhanced_system
+    except Exception as e:
+        logger.error(f"Failed to start enhanced system: {e}")
+        return None
+
+def setup_enhanced_socketio(socketio):
+    """Setup SocketIO for the enhanced system"""
+    @socketio.on('connect')
+    def handle_connect():
+        logger.info('Client connected to enhanced system')
+    
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        logger.info('Client disconnected from enhanced system')
+
+def get_enhanced_status():
+    """Get system status"""
+    global enhanced_system
+    if enhanced_system:
+        return {
+            'running': enhanced_system.running,
+            'conversation_active': enhanced_system.conversation_active,
+            'message_count': enhanced_system.message_count
+        }
+    return {'running': False}
                 'role': 'Business strategy and operations expert'
             },
             {
