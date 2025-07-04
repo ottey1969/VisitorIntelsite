@@ -209,7 +209,7 @@ class LiveConversationManager {
                         </div>
                     </div>
                     
-                    <p class="card-text mb-3">${message.content}</p>
+                    <p class="card-text mb-3 text-dark">${message.content}</p>
                     
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="source-info">
@@ -219,7 +219,8 @@ class LiveConversationManager {
                         <button class="btn btn-outline-primary btn-sm investigation-btn" 
                                 data-message-id="${message.id}"
                                 data-agent-type="${message.agent_type}"
-                                data-message-content="${message.content}">
+                                data-message-content="${encodeURIComponent(message.content)}"
+                                onclick="console.log('Investigation clicked for:', '${message.agent_type}'); window.liveConversationManager.showInvestigation('${message.agent_type}', '${encodeURIComponent(message.content)}', '${message.id}');">
                             <i class="fas fa-search me-1"></i>Short Investigation
                         </button>
                     </div>
