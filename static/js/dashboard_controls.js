@@ -31,7 +31,7 @@ class DashboardContentManager {
             },
             knowledge: {
                 name: 'Knowledge Base',
-                description: 'Industry expertise articles and guides',
+                description: 'Industry expertise articles and important guides',
                 icon: 'fas fa-book',
                 status: 'not_generated'
             }
