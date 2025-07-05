@@ -371,6 +371,17 @@ body {
     border: 2px solid var(--primary-color);
 }
 
+/* Conversation Messages Container - Make Taller to Show 6 Messages */
+#conversation-messages, 
+.conversation-messages,
+.conversation-stream {
+    min-height: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 20px;
+    scrollbar-width: thin;
+}
+
 .live-stats-showcase {
     border: 1px solid rgba(0, 102, 204, 0.2);
 }
