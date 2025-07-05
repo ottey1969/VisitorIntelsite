@@ -238,12 +238,32 @@ class EnhancedCountdownTimer {
         // Update next conversation time (convert from server to local)
         if (data.next_time_local && data.next_time_local !== null) {
             const nextTime = new Date(data.next_time_local);
+            const now = new Date();
+            
             if (!isNaN(nextTime.getTime())) {
-                nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit', 
-                    hour12: true 
-                });
+                // During active conversation, show next message time or completion time
+                if (isActive) {
+                    if (nextTime > now) {
+                        nextConversationTime.textContent = `Next: ${nextTime.toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit', 
+                            hour12: true 
+                        })}`;
+                    } else {
+                        nextConversationTime.textContent = 'Generating message...';
+                    }
+                } else {
+                    // During waiting, only show future conversation times
+                    if (nextTime > now) {
+                        nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit', 
+                            hour12: true 
+                        });
+                    } else {
+                        nextConversationTime.textContent = 'Starting soon...';
+                    }
+                }
             } else {
                 nextConversationTime.textContent = 'Calculating...';
             }
