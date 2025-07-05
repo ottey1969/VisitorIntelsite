@@ -18,6 +18,7 @@ import uuid
 import logging
 import base64
 import random
+from external_ai_integration import setup_ai_api_routes, external_ai_editor
 
 def has_premium_access(business):
     """Check if business has access to premium features (social media, infographics, etc.)"""
@@ -2236,6 +2237,15 @@ def get_countdown():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+# External AI Interface Route
+@app.route('/external-ai')
+def external_ai_interface():
+    """Web interface for external AI to access and modify code"""
+    return render_template('external_ai_interface.html')
+
+# Setup External AI API Routes
+setup_ai_api_routes(app)
 
 @app.errorhandler(500)
 def internal_error(error):

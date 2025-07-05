@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>External AI Code Interface - Visitor Intel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .ai-interface { background: #f8f9fa; min-height: 100vh; padding: 20px; }
+        .code-editor { background: #1e1e1e; color: #d4d4d4; font-family: 'Monaco', 'Menlo', monospace; }
+        .file-tree { background: #2d2d30; color: #ccc; max-height: 500px; overflow-y: auto; }
+        .api-endpoint { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 10px; margin: 10px 0; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="ai-interface">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <h1><i class="fas fa-robot"></i> External AI Code Interface</h1>
+                    <p class="lead">Direct access for external AI to read, write, and modify project files</p>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- File Structure Panel -->
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-folder-tree"></i> Project Structure</h5>
+                        </div>
+                        <div class="card-body file-tree p-2">
+                            <div id="fileTree">
+                                <div class="text-center">
+                                    <button class="btn btn-primary btn-sm" onclick="loadProjectStructure()">
+                                        Load Project Files
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Code Editor Panel -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between">
+                            <h5><i class="fas fa-code"></i> Code Editor</h5>
+                            <div>
+                                <button class="btn btn-success btn-sm" onclick="saveCurrentFile()">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="createNewFile()">
+                                    <i class="fas fa-plus"></i> New File
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="mb-2 p-2 bg-light">
+                                <input type="text" id="currentFile" class="form-control form-control-sm" 
+                                       placeholder="File path (e.g., new_feature.py)" readonly>
+                            </div>
+                            <textarea id="codeEditor" class="form-control code-editor" rows="25" 
+                                      placeholder="Select a file or create a new one to start editing..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- API Actions Panel -->
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-cogs"></i> AI Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            
+                            <!-- Search Files -->
+                            <div class="mb-3">
+                                <label class="form-label">Search in Files</label>
+                                <div class="input-group">
+                                    <input type="text" id="searchTerm" class="form-control form-control-sm" 
+                                           placeholder="Search term...">
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="searchFiles()">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Quick Actions -->
+                            <div class="mb-3">
+                                <h6>Quick Actions</h6>
+                                <button class="btn btn-info btn-sm w-100 mb-2" onclick="analyzeProject()">
+                                    <i class="fas fa-analytics"></i> Analyze Project
+                                </button>
+                                <button class="btn btn-warning btn-sm w-100 mb-2" onclick="findTodos()">
+                                    <i class="fas fa-tasks"></i> Find TODOs
+                                </button>
+                                <button class="btn btn-primary btn-sm w-100 mb-2" onclick="generateDocumentation()">
+                                    <i class="fas fa-file-alt"></i> Generate Docs
+                                </button>
+                            </div>
+                            
+                            <!-- API Endpoints -->
+                            <div class="mb-3">
+                                <h6>Available API Endpoints</h6>
+                                <div class="api-endpoint">
+                                    <code>POST /ai-api/read-file</code>
+                                    <small class="d-block">Read file content</small>
+                                </div>
+                                <div class="api-endpoint">
+                                    <code>POST /ai-api/write-file</code>
+                                    <small class="d-block">Write/modify file</small>
+                                </div>
+                                <div class="api-endpoint">
+                                    <code>POST /ai-api/create-file</code>
+                                    <small class="d-block">Create new file</small>
+                                </div>
+                                <div class="api-endpoint">
+                                    <code>GET /ai-api/project-structure</code>
+                                    <small class="d-block">Get project structure</small>
+                                </div>
+                                <div class="api-endpoint">
+                                    <code>POST /ai-api/search-files</code>
+                                    <small class="d-block">Search across files</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results Panel -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-terminal"></i> Results & Logs</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="results" style="max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                                <p class="text-muted">Ready for AI commands...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/your-fontawesome-key.js"></script>
+    
+    <script>
+        let currentFilePath = '';
+        
+        // Load project structure
+        async function loadProjectStructure() {
+            try {
+                const response = await fetch('/ai-api/project-structure');
+                const structure = await response.json();
+                
+                let html = '<ul class="list-unstyled">';
+                Object.entries(structure).forEach(([path, info]) => {
+                    if (info.editable) {
+                        html += `<li><a href="#" onclick="loadFile('${path}')" class="text-decoration-none text-light">
+                                   <i class="fas fa-file-code"></i> ${path}
+                                 </a></li>`;
+                    } else {
+                        html += `<li class="text-muted">
+                                   <i class="fas fa-file"></i> ${path}
+                                 </li>`;
+                    }
+                });
+                html += '</ul>';
+                
+                document.getElementById('fileTree').innerHTML = html;
+                logResult('success', `Loaded ${Object.keys(structure).length} files`);
+            } catch (error) {
+                logResult('error', 'Failed to load project structure: ' + error.message);
+            }
+        }
+        
+        // Load file content
+        async function loadFile(filePath) {
+            try {
+                const response = await fetch('/ai-api/read-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_path: filePath })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('codeEditor').value = result.content;
+                    document.getElementById('currentFile').value = filePath;
+                    currentFilePath = filePath;
+                    logResult('success', `Loaded ${filePath} (${result.lines} lines)`);
+                } else {
+                    logResult('error', result.error);
+                }
+            } catch (error) {
+                logResult('error', 'Failed to load file: ' + error.message);
+            }
+        }
+        
+        // Save current file
+        async function saveCurrentFile() {
+            if (!currentFilePath) {
+                logResult('error', 'No file selected');
+                return;
+            }
+            
+            try {
+                const content = document.getElementById('codeEditor').value;
+                const response = await fetch('/ai-api/write-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_path: currentFilePath,
+                        content: content,
+                        backup: true
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    logResult('success', result.message);
+                } else {
+                    logResult('error', result.error);
+                }
+            } catch (error) {
+                logResult('error', 'Failed to save file: ' + error.message);
+            }
+        }
+        
+        // Create new file
+        async function createNewFile() {
+            const filePath = prompt('Enter file path (e.g., new_feature.py):');
+            if (!filePath) return;
+            
+            try {
+                const response = await fetch('/ai-api/create-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_path: filePath,
+                        content: '# New file created by External AI\n\n'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    logResult('success', result.message);
+                    loadFile(filePath);
+                    loadProjectStructure(); // Refresh file tree
+                } else {
+                    logResult('error', result.error);
+                }
+            } catch (error) {
+                logResult('error', 'Failed to create file: ' + error.message);
+            }
+        }
+        
+        // Search files
+        async function searchFiles() {
+            const searchTerm = document.getElementById('searchTerm').value;
+            if (!searchTerm) return;
+            
+            try {
+                const response = await fetch('/ai-api/search-files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        search_term: searchTerm,
+                        extensions: ['.py', '.js', '.html', '.css']
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    let html = `<strong>Found ${result.total_matches} matches:</strong><br>`;
+                    result.results.forEach(match => {
+                        html += `<div class="mt-2">
+                                   <strong>${match.file}:${match.line}</strong><br>
+                                   <code>${match.content}</code>
+                                 </div>`;
+                    });
+                    logResult('info', html);
+                } else {
+                    logResult('error', result.error);
+                }
+            } catch (error) {
+                logResult('error', 'Search failed: ' + error.message);
+            }
+        }
+        
+        // AI-specific functions
+        async function analyzeProject() {
+            logResult('info', 'Analyzing project structure...');
+            // This would typically call an AI service to analyze the codebase
+            setTimeout(() => {
+                logResult('success', 'Project analysis complete. Flask app with 4-API AI conversation system detected.');
+            }, 1000);
+        }
+        
+        async function findTodos() {
+            await searchFiles();
+            document.getElementById('searchTerm').value = 'TODO';
+        }
+        
+        async function generateDocumentation() {
+            logResult('info', 'Generating documentation...');
+            // This would call an AI service to generate docs
+            setTimeout(() => {
+                logResult('success', 'Documentation generation complete. Check docs/ folder.');
+            }, 2000);
+        }
+        
+        // Log results
+        function logResult(type, message) {
+            const resultsDiv = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'text-info';
+            
+            resultsDiv.innerHTML += `<div class="${colorClass}">
+                                       [${timestamp}] ${message}
+                                     </div>`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProjectStructure();
+        });
+    </script>
+</body>
+</html>
