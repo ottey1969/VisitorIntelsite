@@ -1755,17 +1755,44 @@ def keepalive_generate():
 def system_status():
     """API endpoint for system status checks"""
     try:
-        # Check if AI services are available (simple check)
+        # Check real-time conversation manager status
+        from main import realtime_manager
+        
+        conversation_active = False
+        conversation_status = "waiting"  # Default status
+        next_conversation_time = None
+        active_count = 0
+        
+        if realtime_manager and hasattr(realtime_manager, 'active_conversations'):
+            active_count = len(realtime_manager.active_conversations)
+            
+            if active_count > 0:
+                conversation_active = True
+                conversation_status = "active"  # Messages are generating
+                
+                # Find the next message time from active conversations
+                next_times = []
+                for conv_data in realtime_manager.active_conversations.values():
+                    if 'next_message_time' in conv_data:
+                        next_times.append(conv_data['next_message_time'])
+                
+                if next_times:
+                    next_conversation_time = min(next_times).isoformat()
+            else:
+                conversation_status = "waiting"  # Pause between conversations
+        
         status = {
             'system_running': True,
             'api_status': {
-                'openai': True,  # Assume available if service is running
+                'openai': True,
                 'anthropic': True,
                 'perplexity': True,
                 'gemini': True
             },
-            'conversation_active': False,
-            'next_conversation_time': None
+            'conversation_active': conversation_active,
+            'conversation_status': conversation_status,
+            'active_conversations_count': active_count,
+            'next_conversation_time': next_conversation_time
         }
         
         return jsonify(status)

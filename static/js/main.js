@@ -270,14 +270,14 @@ class EnhancedLiveConversationManager {
         const sortedMessages = [...this.state.messages].sort((a, b) => {
             const timeA = new Date(a.timestamp || 0);
             const timeB = new Date(b.timestamp || 0);
-            return timeB - timeA; // Newest first
+            return timeA - timeB; // Oldest first (new to old scrolling)
         });
         
         const messagesHTML = sortedMessages.map(msg => this.createMessageHTML(msg)).join('');
         container.innerHTML = messagesHTML;
         
-        // Auto-scroll to latest message (now at the top)
-        const latestMessage = container.querySelector('.message-item:first-child');
+        // Auto-scroll to latest message (now at the bottom)
+        const latestMessage = container.querySelector('.message-item:last-child');
         if (latestMessage) {
             latestMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
