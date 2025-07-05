@@ -238,8 +238,12 @@ class EnhancedCountdownTimer {
         
         // Update next conversation time - use proper UTC to local conversion
         if (data.next_time_local && data.next_time_local !== null) {
-            // Server sends next_time_local as ISO UTC string, convert to local time
-            const nextTime = new Date(data.next_time_local);
+            // Ensure the incoming string is treated as UTC by appending 'Z' if not already there
+            let nextTimeUTC = data.next_time_local;
+            if (!nextTimeUTC.endsWith('Z')) {
+                nextTimeUTC += 'Z';
+            }
+            const nextTime = new Date(nextTimeUTC);
             
             if (!isNaN(nextTime.getTime())) {
                 // Display the next event time in user's local timezone
