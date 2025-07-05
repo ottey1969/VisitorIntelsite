@@ -270,7 +270,7 @@ class EnhancedLiveConversationManager {
         const sortedMessages = [...this.state.messages].sort((a, b) => {
             const timeA = new Date(a.timestamp || 0);
             const timeB = new Date(b.timestamp || 0);
-            return timeA - timeB; // Oldest first (new to old scrolling)
+            return timeB - timeA; // Newest first (newest to oldest display)
         });
         
         const messagesHTML = sortedMessages.map(msg => this.createMessageHTML(msg)).join('');
