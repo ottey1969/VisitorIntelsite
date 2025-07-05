@@ -222,13 +222,14 @@ class EnhancedCountdownTimer {
         // Update status based on conversation_active or conversation_status FIRST
         const isActive = data.conversation_active || data.state === 'active';
         
-        // Update next conversation time (convert from server to local)
-        if (data.next_time_local && data.next_time_local !== null) {
-            const nextTime = new Date(data.next_time_local);
+        // Update next conversation time (convert from server UTC to local)
+        if (data.next_conversation_time && data.next_conversation_time !== null) {
+            // Server sends UTC time, convert to local
+            const nextTime = new Date(data.next_conversation_time + 'Z'); // Add Z to indicate UTC
             const now = new Date();
             
             if (!isNaN(nextTime.getTime())) {
-                // Always show the actual next event time, never "Calculating..."
+                // Always show the actual next event time in user's local timezone
                 nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', { 
                     hour: 'numeric', 
                     minute: '2-digit', 

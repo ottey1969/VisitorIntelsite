@@ -360,13 +360,21 @@ class EnhancedLiveConversationManager {
         if (!timestamp) return 'Just now';
         
         try {
-            const date = new Date(timestamp);
+            // Ensure UTC timestamp is properly converted to local time
+            let date;
+            if (timestamp.includes('T') && !timestamp.endsWith('Z')) {
+                // Server sends UTC without Z, add it for proper parsing
+                date = new Date(timestamp + 'Z');
+            } else {
+                date = new Date(timestamp);
+            }
+            
             // Ensure we have a valid date
             if (isNaN(date.getTime())) {
                 return 'Recently';
             }
             
-            // Format with seconds for unique display
+            // Format with seconds for unique display in local timezone
             return date.toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
