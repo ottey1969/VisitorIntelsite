@@ -286,26 +286,26 @@ class EnhancedCountdownTimer {
         // Update status based on conversation_active or conversation_status
         const isActive = data.conversation_active || data.state === 'active';
         if (isActive) {
-            statusBadge.textContent = 'ACTIVE';
+            statusBadge.textContent = '🔴 LIVE';
             statusBadge.className = 'status-badge active';
-            headerText.textContent = 'AI Conversation Active';
+            headerText.textContent = '4 AI Agents Are Having Live Discussion';
             
-            // During active conversation, show time until next message
+            // During active conversation, show clear progress message
             if (remainingSeconds > 0) {
-                remainingText.textContent = `Next message in ${this.formatRemainingText(remainingSeconds)}`;
+                remainingText.textContent = `🤖 AI conversation in progress • Next message in ${this.formatRemainingText(remainingSeconds)}`;
             } else {
-                remainingText.textContent = 'Generating next message...';
+                remainingText.textContent = '🤖 AI agents are generating the next message right now...';
             }
         } else {
-            statusBadge.textContent = 'WAITING';
+            statusBadge.textContent = '⏸️ WAITING';
             statusBadge.className = 'status-badge waiting';
-            headerText.textContent = 'Next AI Conversation';
+            headerText.textContent = 'Waiting for Next AI Discussion';
             
-            // During waiting, show time until next conversation
+            // During waiting, show clear waiting message
             if (remainingSeconds > 0) {
-                remainingText.textContent = `Conversation starts in ${this.formatRemainingText(remainingSeconds)}`;
+                remainingText.textContent = `⏳ Taking a short break between conversations • Next discussion starts in ${this.formatRemainingText(remainingSeconds)}`;
             } else {
-                remainingText.textContent = 'Preparing next conversation...';
+                remainingText.textContent = '⏳ Preparing the next AI conversation between 4 expert agents...';
             }
         }
     }
