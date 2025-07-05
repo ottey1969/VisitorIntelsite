@@ -356,34 +356,23 @@ class EnhancedLiveConversationManager {
         };
     }
     
-    formatTimestamp(timestamp) {
-        if (!timestamp) return 'Just now';
-        
+    formatTimestamp(isoTimestamp) {
+        if (!isoTimestamp) return '';
         try {
-            // Ensure UTC timestamp is properly converted to local time
-            let date;
-            if (timestamp.includes('T') && !timestamp.endsWith('Z')) {
-                // Server sends UTC without Z, add it for proper parsing
-                date = new Date(timestamp + 'Z');
-            } else {
-                date = new Date(timestamp);
-            }
+            // Create a Date object from the ISO 8601 string
+            // JavaScript's Date constructor handles ISO 8601 strings correctly,
+            // interpreting 'Z' or '+00:00' as UTC and converting to local time.
+            const date = new Date(isoTimestamp);
             
-            // Ensure we have a valid date
-            if (isNaN(date.getTime())) {
-                return 'Recently';
-            }
-            
-            // Format with seconds for unique display in local timezone
-            return date.toLocaleTimeString([], {
-                hour: '2-digit',
+            // Format to local time (e.g., 07:00 PM)
+            return date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
                 minute: '2-digit',
-                second: '2-digit',
                 hour12: true
             });
-        } catch (error) {
-            console.warn('[Timestamp] Format error:', error, 'for timestamp:', timestamp);
-            return 'Recently';
+        } catch (e) {
+            console.error('Error formatting timestamp:', e, isoTimestamp);
+            return 'Invalid Time';
         }
     }
     
