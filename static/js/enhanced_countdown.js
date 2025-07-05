@@ -145,10 +145,17 @@ class EnhancedCountdownTimer {
                 
                 // Calculate remaining seconds
                 let remaining_seconds = 0;
-                if (data.next_conversation_time) {
-                    const nextTime = new Date(data.next_conversation_time);
-                    const now = new Date();
-                    remaining_seconds = Math.max(0, Math.floor((nextTime - now) / 1000));
+                if (data.next_conversation_time && data.next_conversation_time !== null) {
+                    try {
+                        const nextTime = new Date(data.next_conversation_time);
+                        const now = new Date();
+                        if (!isNaN(nextTime.getTime())) {
+                            remaining_seconds = Math.max(0, Math.floor((nextTime - now) / 1000));
+                        }
+                    } catch (e) {
+                        console.warn('Error parsing next conversation time:', e);
+                        remaining_seconds = 0;
+                    }
                 }
                 
                 // Return countdown data in expected format
