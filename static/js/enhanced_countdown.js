@@ -223,14 +223,7 @@ class EnhancedCountdownTimer {
         
         // If any essential elements are missing, return early
         if (!countdownTime || !localTime || !nextConversationTime || !remainingText || !progressFill) {
-            console.warn('Missing required countdown elements:', {
-                countdownTime: !!countdownTime,
-                localTime: !!localTime,
-                nextConversationTime: !!nextConversationTime,
-                remainingText: !!remainingText,
-                progressFill: !!progressFill,
-                container: !!this.container
-            });
+            // Silently return to avoid console spam - this is normal during initialization
             return;
         }
         
@@ -332,24 +325,36 @@ class EnhancedCountdownTimer {
     
     async updateCountdown() {
         try {
-            const data = await this.fetchCountdownData();
-            this.updateDisplay(data);
-            
-            // If conversation is starting soon (less than 10 seconds), prepare for active state
-            if (data && data.remaining_seconds <= 10 && data.remaining_seconds > 0) {
-                console.log('Conversation starting soon...');
+            // First check if required elements exist
+            if (!this.container || !document.getElementById('countdown-time')) {
+                // Elements not available yet, wait and try again
+                this.interval = setTimeout(() => this.updateCountdown(), 2000);
+                return;
             }
             
-            // If conversation should be active, refresh more frequently
-            if (data && data.state === 'active') {
-                this.interval = setTimeout(() => this.updateCountdown(), 5000); // 5 seconds for active
+            const data = await this.fetchCountdownData();
+            if (data) {
+                this.updateDisplay(data);
+                
+                // If conversation is starting soon (less than 10 seconds), prepare for active state
+                if (data.remaining_seconds <= 10 && data.remaining_seconds > 0) {
+                    console.log('Conversation starting soon...');
+                }
+                
+                // If conversation should be active, refresh more frequently
+                if (data.state === 'active') {
+                    this.interval = setTimeout(() => this.updateCountdown(), 5000); // 5 seconds for active
+                } else {
+                    this.interval = setTimeout(() => this.updateCountdown(), 1000); // 1 second for waiting
+                }
             } else {
-                this.interval = setTimeout(() => this.updateCountdown(), 1000); // 1 second for waiting
+                // No data received, try again with longer interval
+                this.interval = setTimeout(() => this.updateCountdown(), 5000);
             }
         } catch (error) {
-            console.error('Error in updateCountdown:', error);
+            console.warn('Countdown timer waiting for page elements...');
             // Continue with a default interval
-            this.interval = setTimeout(() => this.updateCountdown(), 1000);
+            this.interval = setTimeout(() => this.updateCountdown(), 2000);
         }
     }
     

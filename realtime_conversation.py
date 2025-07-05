@@ -209,7 +209,10 @@ class RealtimeConversationManager:
                 logging.error(f"Failed to generate content for message {message_index + 1}")
                 return False
             
-            # Create and save the message
+            # Calculate the intended timestamp (start + message number * 1 minute)
+            intended_timestamp = conv_data['conversation_start_time'] + timedelta(minutes=message_index)
+            
+            # Create and save the message with intended timestamp
             message = ConversationMessage(
                 conversation_id=conv_data['conversation_id'],
                 ai_agent_name=agent_name,
@@ -217,12 +220,16 @@ class RealtimeConversationManager:
                 content=content,
                 message_order=message_index + 1
             )
+            
+            # Set the timestamp to the intended time (not current server time)
+            message.created_at = intended_timestamp
+            
             db.session.add(message)
             db.session.commit()
             
             # Update conversation data
             conv_data['current_message'] += 1
-            conv_data['next_message_time'] = message.created_at + timedelta(minutes=1)
+            conv_data['next_message_time'] = intended_timestamp + timedelta(minutes=1)
             
             logging.info(f"Generated message {message_index + 1}/{conv_data['total_messages']} for conversation {conv_data['conversation_id']}: {agent_name}")
             return True

@@ -29,9 +29,10 @@
     
     <!-- Font Awesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://use.fontawesome.com/releases/v6.4.0/css/all.css" rel="stylesheet">
     
     <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=20250705" rel="stylesheet">
     
     <!-- Structured Data Schema -->
     <script type="application/ld+json">
@@ -154,7 +155,7 @@
     
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/enhanced_countdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/countdown_timer_fix.js') }}"></script>
     
     {% block extra_scripts %}{% endblock %}
 </body>
