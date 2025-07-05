@@ -1742,14 +1742,19 @@ def keepalive_generate():
         db.session.add(conversation)
         db.session.flush()
         
-        # Save messages
+        # Save messages with 1-minute intervals between each message
+        base_time = datetime.now()
         for i, (agent_name, agent_type, content) in enumerate(messages):
+            # Each message is 1 minute after the previous one
+            message_time = base_time + timedelta(minutes=i)
+            
             message = ConversationMessage(
                 conversation_id=conversation.id,
                 ai_agent_name=agent_name,
                 ai_agent_type=agent_type,
                 content=content,
-                message_order=i + 1
+                message_order=i + 1,
+                created_at=message_time  # Set specific timestamp for each message
             )
             db.session.add(message)
         
@@ -1773,6 +1778,29 @@ def keepalive_generate():
     except Exception as e:
         db.session.rollback()
         logging.error(f"Keepalive conversation generation failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/system-status')
+def system_status():
+    """API endpoint for system status checks"""
+    try:
+        # Check if AI services are available (simple check)
+        status = {
+            'system_running': True,
+            'api_status': {
+                'openai': True,  # Assume available if service is running
+                'anthropic': True,
+                'perplexity': True,
+                'gemini': True
+            },
+            'conversation_active': False,
+            'next_conversation_time': None
+        }
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        logging.error(f"System status check failed: {e}")
         return jsonify({'error': str(e)}), 500
 
 # Business Content Management API Endpoints

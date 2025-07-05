@@ -56,7 +56,7 @@ def main():
     """Main keepalive loop"""
     logging.info("Starting AI Conversation Platform keepalive monitor...")
     
-    conversation_interval = 1800  # Generate new conversation every 30 minutes (more frequent)
+    conversation_interval = 1260  # Generate new conversation every 21 minutes (16min conversation + 5min break)
     health_check_interval = 180   # Health check every 3 minutes (more frequent)
     ping_interval = 60           # Server ping every minute to prevent sleep
     
