@@ -298,25 +298,30 @@ class EnhancedCountdownTimer {
         
         // Update status based on conversation_active or conversation_status
         const isActive = data.conversation_active || data.state === 'active';
-        if (isActive) {
-            statusBadge.textContent = '🔴 LIVE';
-            statusBadge.className = 'status-badge active';
-            headerText.textContent = '4 AI Agents Are Having Live Discussion';
-            
-            // During active conversation, show clear progress message
-            if (remainingSeconds > 0) {
+        
+        // Update status badge and header text
+        if (statusBadge && headerText) {
+            if (isActive) {
+                statusBadge.textContent = 'LIVE';
+                statusBadge.className = 'status-badge active';
+                headerText.textContent = '4 AI Agents Are Having Live Discussion';
+            } else {
+                statusBadge.textContent = 'WAITING';
+                statusBadge.className = 'status-badge waiting';
+                headerText.textContent = 'Waiting for Next AI Discussion';
+            }
+        }
+        
+        // Update remaining text with clear messaging
+        if (remainingSeconds > 0) {
+            if (isActive) {
                 remainingText.textContent = `🤖 AI conversation in progress • Next message in ${this.formatRemainingText(remainingSeconds)}`;
             } else {
-                remainingText.textContent = '🤖 AI agents are generating the next message right now...';
+                remainingText.textContent = `⏳ Taking a short break between conversations • Next discussion starts in ${this.formatRemainingText(remainingSeconds)}`;
             }
         } else {
-            statusBadge.textContent = '⏸️ WAITING';
-            statusBadge.className = 'status-badge waiting';
-            headerText.textContent = 'Waiting for Next AI Discussion';
-            
-            // During waiting, show clear waiting message
-            if (remainingSeconds > 0) {
-                remainingText.textContent = `⏳ Taking a short break between conversations • Next discussion starts in ${this.formatRemainingText(remainingSeconds)}`;
+            if (isActive) {
+                remainingText.textContent = '🤖 AI agents are generating the next message right now...';
             } else {
                 remainingText.textContent = '⏳ Preparing the next AI conversation between 4 expert agents...';
             }

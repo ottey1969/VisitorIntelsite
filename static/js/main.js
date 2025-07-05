@@ -266,15 +266,16 @@ class EnhancedLiveConversationManager {
             return;
         }
         
-        // Sort messages by timestamp (newest first - reverse chronological order)
+        // Sort messages by messageNumber (oldest first - chronological order top to bottom)
         const sortedMessages = [...this.state.messages].sort((a, b) => {
-            const timeA = new Date(a.timestamp || 0);
-            const timeB = new Date(b.timestamp || 0);
-            return timeB - timeA; // Newest first (newest to oldest display)
+            const msgNumA = a.messageNumber || 0;
+            const msgNumB = b.messageNumber || 0;
+            return msgNumA - msgNumB; // Oldest first (top to bottom display)
         });
         
-        // Limit to 16 most recent messages for display
-        const messagesToShow = sortedMessages.slice(0, 16);
+        // Show last 16 messages but only display 4 at a time with scrolling
+        const allMessages = sortedMessages.slice(-16); // Get last 16 messages
+        const messagesToShow = allMessages.slice(-4); // Show only last 4 messages
         const messagesHTML = messagesToShow.map(msg => this.createMessageHTML(msg)).join('');
         container.innerHTML = messagesHTML;
         
