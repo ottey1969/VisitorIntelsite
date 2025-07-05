@@ -12,7 +12,12 @@ class EnhancedCountdownTimer {
     }
     
     initializeTimer() {
-        if (!this.container) return;
+        if (!this.container) {
+            console.warn('Countdown container not found');
+            return;
+        }
+        
+        console.log('Initializing countdown timer in container:', this.container.id);
         
         // Create countdown display elements
         this.container.innerHTML = `
@@ -207,21 +212,36 @@ class EnhancedCountdownTimer {
     }
     
     updateDisplay(data) {
-        if (!data) {
-            document.getElementById('countdown-time').textContent = '00:00';
-            document.getElementById('remaining-text').textContent = 'Calculating next conversation...';
-            document.getElementById('next-conversation-time').textContent = 'Calculating...';
-            return;
-        }
-        
-        const remainingSeconds = data.remaining_seconds || 0;
+        // Check if all required elements exist
         const countdownTime = document.getElementById('countdown-time');
         const localTime = document.getElementById('local-time');
         const nextConversationTime = document.getElementById('next-conversation-time');
         const remainingText = document.getElementById('remaining-text');
         const progressFill = document.getElementById('progress-fill');
-        const statusBadge = this.container.querySelector('.status-badge');
+        const statusBadge = this.container ? this.container.querySelector('.status-badge') : null;
         const headerText = document.getElementById('countdown-header-text');
+        
+        // If any essential elements are missing, return early
+        if (!countdownTime || !localTime || !nextConversationTime || !remainingText || !progressFill) {
+            console.warn('Missing required countdown elements:', {
+                countdownTime: !!countdownTime,
+                localTime: !!localTime,
+                nextConversationTime: !!nextConversationTime,
+                remainingText: !!remainingText,
+                progressFill: !!progressFill,
+                container: !!this.container
+            });
+            return;
+        }
+        
+        if (!data) {
+            countdownTime.textContent = '00:00';
+            remainingText.textContent = 'Calculating next conversation...';
+            nextConversationTime.textContent = 'Calculating...';
+            return;
+        }
+        
+        const remainingSeconds = data.remaining_seconds || 0;
         
         // Update countdown time
         countdownTime.textContent = this.formatTime(remainingSeconds);

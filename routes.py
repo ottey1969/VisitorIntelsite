@@ -1780,6 +1780,32 @@ def system_status():
                     next_conversation_time = min(next_times).isoformat()
             else:
                 conversation_status = "waiting"  # Pause between conversations
+                
+                # Calculate next conversation time based on last completed conversation
+                from datetime import datetime, timedelta
+                import pytz
+                
+                # Get the last completed conversation
+                last_conversation = Conversation.query.filter_by(status='completed').order_by(Conversation.id.desc()).first()
+                
+                if last_conversation:
+                    # Get the last message time from that conversation
+                    last_message = ConversationMessage.query.filter_by(conversation_id=last_conversation.id).order_by(ConversationMessage.created_at.desc()).first()
+                    if last_message:
+                        # Next conversation starts 5 minutes after last message
+                        next_time = last_message.created_at + timedelta(minutes=5)
+                        # Ensure it's in the future
+                        now_utc = datetime.utcnow()
+                        if next_time <= now_utc:
+                            # If calculated time is in past, schedule next conversation for 5 minutes from now
+                            next_time = now_utc + timedelta(minutes=5)
+                        next_conversation_time = next_time.isoformat()
+                    else:
+                        # No messages found, schedule in 5 minutes
+                        next_conversation_time = (datetime.utcnow() + timedelta(minutes=5)).isoformat()
+                else:
+                    # No conversations yet, schedule in 5 minutes
+                    next_conversation_time = (datetime.utcnow() + timedelta(minutes=5)).isoformat()
         
         status = {
             'system_running': True,
