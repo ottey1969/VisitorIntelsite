@@ -352,8 +352,7 @@ class EnhancedCountdownTimer {
                 this.interval = setTimeout(() => this.updateCountdown(), 5000);
             }
         } catch (error) {
-            console.warn('Countdown timer waiting for page elements...');
-            // Continue with a default interval
+            // Silent error handling - elements not ready yet
             this.interval = setTimeout(() => this.updateCountdown(), 2000);
         }
     }

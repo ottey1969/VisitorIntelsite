@@ -15,6 +15,11 @@ class RobustCountdownTimer {
         const container = document.getElementById('enhanced-countdown');
         if (!container) return false;
 
+        // If container is empty, create the countdown HTML structure
+        if (!container.innerHTML.trim()) {
+            this.createCountdownHTML(container);
+        }
+
         const elements = {
             countdownTime: document.getElementById('countdown-time'),
             localTime: document.getElementById('local-time'),
@@ -34,6 +39,97 @@ class RobustCountdownTimer {
         }
         
         return false;
+    }
+
+    createCountdownHTML(container) {
+        container.innerHTML = `
+            <div class="countdown-widget bg-gradient-primary text-white rounded-4 shadow-lg p-4 mb-4">
+                <div class="text-center">
+                    <h5 class="fw-bold mb-3">
+                        <span id="countdown-header-text">AI Conversation Status</span>
+                        <span class="status-badge ms-2 px-3 py-1 rounded-pill bg-white text-primary">⏸️ WAITING</span>
+                    </h5>
+                    
+                    <div class="countdown-display">
+                        <div class="time-display" id="countdown-time">00:00</div>
+                        <div class="time-info">
+                            <div><strong>Local Time:</strong> <span id="local-time">Loading...</span></div>
+                            <div><strong>Next Event:</strong> <span id="next-conversation-time">Calculating...</span></div>
+                        </div>
+                    </div>
+                    
+                    <div id="remaining-text" class="mt-3">Initializing countdown...</div>
+                    
+                    <div class="countdown-progress mt-3">
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                        <small class="opacity-75">21-minute conversation cycles (16 messages + 5 min break)</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add necessary CSS
+        this.addCountdownStyles();
+    }
+
+    addCountdownStyles() {
+        if (document.getElementById('countdown-styles')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'countdown-styles';
+        style.textContent = `
+            .countdown-widget {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            
+            .status-badge.active {
+                background: #dc3545 !important;
+                color: white !important;
+                animation: pulse 2s infinite;
+            }
+            
+            .status-badge.waiting {
+                background: #ffc107 !important;
+                color: #000 !important;
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.7; }
+                100% { opacity: 1; }
+            }
+            
+            .time-display {
+                font-size: 2.5em;
+                font-weight: bold;
+                margin-bottom: 10px;
+                font-family: 'Courier New', monospace;
+            }
+            
+            .time-info {
+                opacity: 0.9;
+                line-height: 1.4;
+            }
+            
+            .progress-bar {
+                background: rgba(255,255,255,0.2);
+                height: 8px;
+                border-radius: 4px;
+                overflow: hidden;
+                margin-bottom: 8px;
+            }
+            
+            .progress-fill {
+                background: rgba(255,255,255,0.8);
+                height: 100%;
+                border-radius: 4px;
+                transition: width 1s ease;
+                width: 0%;
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     async fetchSystemStatus() {
@@ -204,14 +300,30 @@ class RobustCountdownTimer {
     }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Only start if countdown container exists
-    if (document.getElementById('enhanced-countdown')) {
-        window.robustCountdown = new RobustCountdownTimer();
-        window.robustCountdown.start();
+// Initialize immediately when script loads
+(function() {
+    function initCountdown() {
+        const container = document.getElementById('enhanced-countdown');
+        if (container) {
+            window.robustCountdown = new RobustCountdownTimer();
+            window.robustCountdown.start();
+            console.log('Countdown timer initialized successfully');
+        } else {
+            // Try again in 100ms if container not found
+            setTimeout(initCountdown, 100);
+        }
     }
-});
+    
+    // Try to initialize immediately
+    initCountdown();
+    
+    // Also try when DOM is ready as backup
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!window.robustCountdown) {
+            initCountdown();
+        }
+    });
+})();
 
 // Export for manual use
 window.RobustCountdownTimer = RobustCountdownTimer;
