@@ -140,9 +140,8 @@ class EnhancedCountdownTimer {
             const response = await fetch('/api/system-status');
             if (!response.ok) throw new Error('Failed to fetch system status');
             
-            const result = await response.json();
-            if (result.success && result.data) {
-                const data = result.data;
+            const data = await response.json();
+            if (data) {
                 
                 // Calculate remaining seconds
                 let remaining_seconds = 0;
