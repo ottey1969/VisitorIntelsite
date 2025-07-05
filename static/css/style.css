@@ -1,5 +1,25 @@
 /* Custom CSS for AI Conversation Platform */
 
+/* Font Awesome icon fixes */
+.fas, .fa-solid {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+    display: inline-block !important;
+}
+
+.fab, .fa-brands {
+    font-family: "Font Awesome 6 Brands" !important;
+    font-weight: 400 !important;
+    display: inline-block !important;
+}
+
+/* Ensure icons are visible */
+.dashboard-preview-card .fas,
+.stat-card .fas {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
 :root {
     --primary-color: #0066cc;
     --secondary-color: #28a745;
