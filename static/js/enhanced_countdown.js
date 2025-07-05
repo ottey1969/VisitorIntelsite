@@ -19,39 +19,10 @@ class EnhancedCountdownTimer {
         
         console.log('Initializing countdown timer in container:', this.container.id);
         
-        // Create countdown display elements
-        this.container.innerHTML = `
-            <div class="enhanced-countdown-container">
-                <div class="countdown-header">
-                    <h4 id="countdown-header-text">Next AI Conversation</h4>
-                    <div class="countdown-status">
-                        <span class="status-badge waiting">Waiting</span>
-                    </div>
-                </div>
-                <div class="countdown-display">
-                    <div class="time-display">
-                        <span class="countdown-time" id="countdown-time">--:--</span>
-                        <small style="font-size: 0.8em; color: rgba(255,255,255,0.8); margin-left: 8px;">min:sec</small>
-                    </div>
-                    <div class="time-info">
-                        <small>Local time: <span id="local-time">--:--:--</span></small>
-                        <br>
-                        <small>Next conversation: <span id="next-conversation-time">Loading...</span></small>
-                    </div>
-                </div>
-                <div class="countdown-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                    </div>
-                    <small><span id="remaining-text">Loading countdown...</span></small>
-                </div>
-            </div>
-        `;
+        // HTML structure is now in the template, just start the timer
+        console.log('Starting countdown timer...');
         
-        // Add CSS styles
-        this.addStyles();
-        
-        // Start the timer
+        // Start the timer immediately
         this.startTimer();
     }
     
