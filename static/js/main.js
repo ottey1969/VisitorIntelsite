@@ -273,13 +273,15 @@ class EnhancedLiveConversationManager {
             return timeB - timeA; // Newest first (newest to oldest display)
         });
         
-        const messagesHTML = sortedMessages.map(msg => this.createMessageHTML(msg)).join('');
+        // Limit to 16 most recent messages for display
+        const messagesToShow = sortedMessages.slice(0, 16);
+        const messagesHTML = messagesToShow.map(msg => this.createMessageHTML(msg)).join('');
         container.innerHTML = messagesHTML;
         
-        // Auto-scroll to latest message (now at the bottom)
-        const latestMessage = container.querySelector('.message-item:last-child');
-        if (latestMessage) {
-            latestMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Auto-scroll to show the newest message at the top
+        const firstMessage = container.querySelector('.message-item:first-child');
+        if (firstMessage) {
+            firstMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
     
