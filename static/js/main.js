@@ -351,17 +351,11 @@ class EnhancedLiveConversationManager {
         
         try {
             const date = new Date(timestamp);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-            
-            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
+            // Always show the actual local time, not relative time
+            return date.toLocaleTimeString([], {
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                hour12: true
             });
         } catch (error) {
             return 'Recently';
