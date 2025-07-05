@@ -1730,49 +1730,20 @@ def keepalive_generate():
         import random
         topic = random.choice(topics)
         
-        # Generate conversation using direct system (bypass smart system for keepalive)
-        messages = ai_manager.generate_conversation(business, topic)
+        # Use real-time conversation manager for progressive generation
+        from realtime_conversation import realtime_manager
         
-        # Create conversation record
-        conversation = Conversation(
-            business_id=business.id,
-            topic=topic,
-            status='active'
-        )
-        db.session.add(conversation)
-        db.session.flush()
+        # Start progressive conversation that generates messages over time
+        conversation_id = realtime_manager.start_progressive_conversation(business, topic)
         
-        # Save messages with 1-minute intervals between each message
-        base_time = datetime.now()
-        for i, (agent_name, agent_type, content) in enumerate(messages):
-            # Each message is 1 minute after the previous one
-            message_time = base_time + timedelta(minutes=i)
-            
-            message = ConversationMessage(
-                conversation_id=conversation.id,
-                ai_agent_name=agent_name,
-                ai_agent_type=agent_type,
-                content=content,
-                message_order=i + 1,
-                created_at=message_time  # Set specific timestamp for each message
-            )
-            db.session.add(message)
-        
-        # Mark conversation as completed
-        conversation.status = 'completed'
-        conversation.credits_used = 1
-        
-        # Deduct credits if not unlimited
-        if not business.is_unlimited:
-            business.credits_remaining = max(0, business.credits_remaining - 1)
-        
-        db.session.commit()
+        if not conversation_id:
+            return jsonify({'error': 'Failed to start conversation'}), 500
         
         return jsonify({
             'success': True,
-            'conversation_id': conversation.id,
+            'conversation_id': conversation_id,
             'topic': topic,
-            'messages_count': len(messages)
+            'messages_count': 1  # Only first message created initially
         })
         
     except Exception as e:
