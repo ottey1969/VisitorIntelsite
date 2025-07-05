@@ -269,10 +269,24 @@ class EnhancedCountdownTimer {
             statusBadge.textContent = 'ACTIVE';
             statusBadge.className = 'status-badge active';
             headerText.textContent = 'AI Conversation Active';
+            
+            // During active conversation, show time until next message
+            if (remainingSeconds > 0) {
+                remainingText.textContent = `Next message in ${this.formatRemainingText(remainingSeconds)}`;
+            } else {
+                remainingText.textContent = 'Generating next message...';
+            }
         } else {
             statusBadge.textContent = 'WAITING';
             statusBadge.className = 'status-badge waiting';
             headerText.textContent = 'Next AI Conversation';
+            
+            // During waiting, show time until next conversation
+            if (remainingSeconds > 0) {
+                remainingText.textContent = `Conversation starts in ${this.formatRemainingText(remainingSeconds)}`;
+            } else {
+                remainingText.textContent = 'Preparing next conversation...';
+            }
         }
     }
     
