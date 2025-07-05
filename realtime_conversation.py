@@ -24,6 +24,10 @@ class RealtimeConversationManager:
         """Start the background conversation manager"""
         if self.thread is None or not self.thread.is_alive():
             self.running = True
+            
+            # Restore any active conversations from database first
+            self._restore_active_conversations()
+            
             self.thread = threading.Thread(target=self._run_background_manager, daemon=True)
             self.thread.start()
             logging.info("Real-time conversation manager started")
@@ -34,6 +38,50 @@ class RealtimeConversationManager:
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=5)
         logging.info("Real-time conversation manager stopped")
+    
+    def _restore_active_conversations(self):
+        """Restore active conversations from database on startup"""
+        try:
+            with app.app_context():
+                # Find conversations that are still active
+                active_conversations = Conversation.query.filter_by(status='active').all()
+                
+                for conversation in active_conversations:
+                    # Count existing messages
+                    message_count = ConversationMessage.query.filter_by(
+                        conversation_id=conversation.id
+                    ).count()
+                    
+                    # Only restore if less than 16 messages (incomplete)
+                    if message_count < 16:
+                        # Restore conversation to tracking
+                        self.active_conversations[conversation.id] = {
+                            'conversation_id': conversation.id,
+                            'business_id': conversation.business_id,
+                            'topic': conversation.topic,
+                            'messages': [],  # Will be generated progressively
+                            'current_message': message_count,
+                            'next_message_time': datetime.now(),  # Generate next message immediately
+                            'total_messages': 16,
+                            'agents': [
+                                {'name': 'Business AI Assistant', 'type': 'openai'},
+                                {'name': 'SEO AI Specialist', 'type': 'anthropic'},
+                                {'name': 'Customer Service AI', 'type': 'perplexity'},
+                                {'name': 'Marketing AI Expert', 'type': 'gemini'}
+                            ] * 4  # 4 rounds of 4 agents each
+                        }
+                        
+                        logging.info(f"Restored active conversation {conversation.id}: {conversation.topic} ({message_count}/16 messages)")
+                    else:
+                        # Mark as completed if all messages are present
+                        conversation.status = 'completed'
+                        db.session.commit()
+                        logging.info(f"Marked conversation {conversation.id} as completed")
+                        
+                logging.info(f"Restored {len(self.active_conversations)} active conversations")
+                
+        except Exception as e:
+            logging.error(f"Failed to restore active conversations: {e}")
     
     def start_progressive_conversation(self, business, topic):
         """Start a new progressive conversation that generates messages over time"""
@@ -48,18 +96,21 @@ class RealtimeConversationManager:
                 db.session.add(conversation)
                 db.session.flush()
                 
-                # Generate all message content at once (for consistency)
-                messages = self.ai_manager.generate_conversation(business, topic)
-                
-                # Schedule the conversation for progressive generation
+                # Create conversation entry for progressive generation (no messages yet)
                 self.active_conversations[conversation.id] = {
                     'conversation_id': conversation.id,
                     'business_id': business.id,
                     'topic': topic,
-                    'messages': messages,
+                    'messages': [],  # Will be generated progressively
                     'current_message': 0,
                     'next_message_time': datetime.now(),
-                    'total_messages': len(messages)
+                    'total_messages': 16,  # Standard 16-message conversation
+                    'agents': [
+                        {'name': 'Business AI Assistant', 'type': 'openai'},
+                        {'name': 'SEO AI Specialist', 'type': 'anthropic'},
+                        {'name': 'Customer Service AI', 'type': 'perplexity'},
+                        {'name': 'Marketing AI Expert', 'type': 'gemini'}
+                    ] * 4  # 4 rounds of 4 agents each
                 }
                 
                 db.session.commit()
@@ -117,10 +168,46 @@ class RealtimeConversationManager:
         try:
             message_index = conv_data['current_message']
             
-            if message_index >= len(conv_data['messages']):
+            if message_index >= conv_data['total_messages']:
                 return False
-                
-            agent_name, agent_type, content = conv_data['messages'][message_index]
+            
+            # Get the agent for this message
+            agent = conv_data['agents'][message_index]
+            agent_name = agent['name']
+            agent_type = agent['type']
+            
+            # Get business context
+            business = Business.query.get(conv_data['business_id'])
+            if not business:
+                logging.error(f"Business {conv_data['business_id']} not found")
+                return False
+            
+            # Build conversation history for context
+            existing_messages = ConversationMessage.query.filter_by(
+                conversation_id=conv_data['conversation_id']
+            ).order_by(ConversationMessage.message_order).all()
+            
+            conversation_history = ""
+            for msg in existing_messages:
+                conversation_history += f"{msg.ai_agent_name}: {msg.content}\n"
+            
+            # Generate message content using AI
+            round_num = (message_index // 4) + 1
+            msg_in_round = (message_index % 4) + 1
+            
+            content = self.ai_manager._generate_agent_message(
+                agent_name=agent_name,
+                agent_type=agent_type,
+                business_context=f"{business.name} in {business.location}, Industry: {business.industry}",
+                topic=conv_data['topic'],
+                conversation_history=conversation_history,
+                round_num=round_num,
+                msg_num=msg_in_round
+            )
+            
+            if not content:
+                logging.error(f"Failed to generate content for message {message_index + 1}")
+                return False
             
             # Create and save the message
             message = ConversationMessage(
@@ -137,7 +224,7 @@ class RealtimeConversationManager:
             conv_data['current_message'] += 1
             conv_data['next_message_time'] = datetime.now() + timedelta(minutes=1)
             
-            logging.info(f"Generated message {message_index + 1}/{conv_data['total_messages']} for conversation {conv_data['conversation_id']}")
+            logging.info(f"Generated message {message_index + 1}/{conv_data['total_messages']} for conversation {conv_data['conversation_id']}: {agent_name}")
             return True
             
         except Exception as e:
