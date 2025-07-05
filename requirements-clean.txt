@@ -1,0 +1,43 @@
+# Core Flask dependencies
+Flask==3.1.1
+Flask-SQLAlchemy==3.1.1
+gunicorn
+psycopg2-binary
+SQLAlchemy==2.0.41
+Werkzeug==3.1.3
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+itsdangerous==2.2.0
+blinker==1.9.0
+click==8.2.1
+typing_extensions==4.14.0
+
+# AI APIs
+anthropic
+openai
+google-genai
+requests
+
+# Authentication and Security
+flask-login
+flask-dance
+email-validator
+oauthlib
+pyjwt
+
+# Additional features
+pytz
+pillow
+trafilatura
+sift-stack-py
+
+# WebSocket support (clean versions only)
+python-socketio==5.12.0
+flask-socketio==5.5.1
+eventlet==0.33.3
+
+# Utilities
+schedule
+websockets
+aiohttp
+flask-cors==6.0.0
