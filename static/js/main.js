@@ -1,12 +1,12 @@
-// API-Integrated Live AI Conversation Feed with Real Backend
-// Perfect Roofing Team - Real Business Data
+// Enhanced Live AI Conversation Feed with Real 4-API Backend Integration
+// Perfect Roofing Team - Real Business Data with Fixed Timestamps
 
-class LiveConversationManager {
+class EnhancedLiveConversationManager {
     constructor() {
         this.config = {
             BACKEND_URL: '',
-            POLLING_INTERVAL: 30000,        // 30 seconds
-            MESSAGE_CHECK_INTERVAL: 45000,  // 45 seconds
+            POLLING_INTERVAL: 5000,         // 5 seconds for real-time updates
+            STATUS_CHECK_INTERVAL: 1000,    // 1 second for countdown
             API_TIMEOUT: 10000,             // 10 seconds
             RETRY_ATTEMPTS: 3,              // 3 retry attempts
             MAX_MESSAGES: 20                // Keep last 20 messages
@@ -17,6 +17,11 @@ class LiveConversationManager {
             currentTopic: null,
             lastUpdate: null,
             isLoading: false,
+            conversationActive: false,
+            timeRemaining: 0,
+            nextConversationTime: null,
+            localTime: null,
+            systemRunning: false,
             apiStatus: {
                 openai: false,
                 anthropic: false,
@@ -32,778 +37,578 @@ class LiveConversationManager {
         
         this.timers = {
             polling: null,
-            messageCheck: null,
-            countdown: null
+            statusCheck: null,
+            localTimeUpdate: null
         };
         
+        this.socket = null;
         this.init();
     }
     
     init() {
-        console.log('[LiveConversation] Initializing with real backend connection...');
+        console.log('[EnhancedLiveConversation] Initializing with 4-API backend...');
+        this.setupSocketIO();
         this.setupEventListeners();
-        this.loadInitialConversation();
         this.startPolling();
-        this.updateAPIStatus();
-        this.startCountdown();
+        this.updateLocalTime();
+        this.checkSystemStatus();
+        
+        // Initial load
+        this.loadLatestConversation();
+    }
+    
+    setupSocketIO() {
+        if (typeof io !== 'undefined') {
+            try {
+                this.socket = io();
+                this.socket.on('conversation_update', (data) => {
+                    console.log('[SocketIO] Conversation update received:', data);
+                    this.handleConversationUpdate(data);
+                });
+                this.socket.on('system_status', (data) => {
+                    console.log('[SocketIO] System status update:', data);
+                    this.updateSystemStatus(data);
+                });
+                console.log('[SocketIO] Connected successfully');
+            } catch (error) {
+                console.warn('[SocketIO] Connection failed, using polling fallback:', error);
+            }
+        }
     }
     
     setupEventListeners() {
-        // Investigation button clicks
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.investigation-btn')) {
-                e.preventDefault();
-                const btn = e.target.closest('.investigation-btn');
-                const messageId = btn.dataset.messageId;
-                const agentType = btn.dataset.agentType;
-                const messageContent = btn.dataset.messageContent;
-                this.showInvestigation(agentType, messageContent, messageId);
-            }
+        // Auto-refresh buttons
+        const refreshButtons = document.querySelectorAll('.btn-refresh, .refresh-feed');
+        refreshButtons.forEach(button => {
+            button.addEventListener('click', () => this.loadLatestConversation());
         });
         
-        // Investigation modal actions
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'download-investigation') {
-                this.downloadInvestigation();
-            } else if (e.target.id === 'print-investigation') {
-                this.printInvestigation();
-            } else if (e.target.id === 'share-investigation') {
-                this.shareInvestigation();
-            }
+        // Generate conversation buttons
+        const generateButtons = document.querySelectorAll('.btn-generate, .generate-conversation');
+        generateButtons.forEach(button => {
+            button.addEventListener('click', (e) => this.handleGenerateClick(e));
         });
         
-        // Refresh button
-        const refreshBtn = document.querySelector('.refresh-btn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                this.refreshConversation();
-            });
-        }
-    }
-    
-    async loadInitialConversation() {
-        console.log('[LiveConversation] Loading initial conversation from backend...');
-        this.setLoadingState(true);
-        
-        try {
-            const response = await this.makeAPICall('/api/live-conversation-latest');
-            if (response.status === 'success') {
-                this.state.messages = response.messages || [];
-                this.state.currentTopic = response.topic;
-                this.state.roundInfo = {
-                    roundNumber: response.round_number || 1,
-                    messageCount: response.message_count || 0,
-                    messagesRemaining: 16 - (response.message_count || 0)
-                };
-                this.state.lastUpdate = new Date(response.timestamp);
-                
-                this.renderMessages();
-                this.updateTopicDisplay();
-                this.updateRoundInfo();
-                
-                console.log('[LiveConversation] Initial conversation loaded successfully');
+        // Page visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.pausePolling();
             } else {
-                throw new Error('Failed to load conversation data');
+                this.resumePolling();
             }
-        } catch (error) {
-            console.error('[LiveConversation] Error loading initial conversation:', error);
-            this.showError('Unable to load live conversation. Please check your connection.');
-        } finally {
-            this.setLoadingState(false);
-        }
+        });
     }
     
-    async checkForNewMessages() {
-        try {
-            const response = await this.makeAPICall('/api/live-conversation-latest');
-            if (response.status === 'success' && response.messages && response.messages.length > this.state.messages.length) {
-                // New messages available
-                const newMessages = response.messages.slice(this.state.messages.length);
-                newMessages.forEach(message => this.addNewMessage(message));
-                
-                // Update topic if changed
-                if (response.topic !== this.state.currentTopic) {
-                    this.state.currentTopic = response.topic;
-                    this.updateTopicDisplay();
-                }
-                
-                console.log('[LiveConversation] New messages received');
+    startPolling() {
+        this.stopPolling();
+        
+        // Main conversation polling
+        this.timers.polling = setInterval(() => {
+            this.loadLatestConversation();
+        }, this.config.POLLING_INTERVAL);
+        
+        // Status check polling
+        this.timers.statusCheck = setInterval(() => {
+            this.checkSystemStatus();
+            this.updateCountdown();
+        }, this.config.STATUS_CHECK_INTERVAL);
+        
+        // Local time update
+        this.timers.localTimeUpdate = setInterval(() => {
+            this.updateLocalTime();
+        }, 1000);
+        
+        console.log('[EnhancedPolling] Started with 5-second intervals');
+    }
+    
+    stopPolling() {
+        Object.values(this.timers).forEach(timer => {
+            if (timer) clearInterval(timer);
+        });
+        Object.keys(this.timers).forEach(key => {
+            this.timers[key] = null;
+        });
+    }
+    
+    pausePolling() {
+        this.stopPolling();
+        console.log('[EnhancedPolling] Paused due to page visibility');
+    }
+    
+    resumePolling() {
+        this.startPolling();
+        this.loadLatestConversation();
+        console.log('[EnhancedPolling] Resumed');
+    }
+    
+    async apiRequest(endpoint, options = {}) {
+        const url = `${this.config.BACKEND_URL}${endpoint}`;
+        const defaultOptions = {
+            timeout: this.config.API_TIMEOUT,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
-        } catch (error) {
-            console.error('[LiveConversation] Error checking for new messages:', error);
-        }
-    }
-    
-    addNewMessage(message) {
-        // Add to end of array (chronological order)
-        this.state.messages.push(message);
-        
-        // Keep only last MAX_MESSAGES
-        if (this.state.messages.length > this.config.MAX_MESSAGES) {
-            this.state.messages = this.state.messages.slice(-this.config.MAX_MESSAGES);
-        }
-        
-        // Update last update time
-        this.state.lastUpdate = new Date();
-        
-        // Re-render messages
-        this.renderMessages();
-        
-        // Show activity pulse
-        this.showActivityPulse();
-        
-        // Reset countdown
-        this.resetCountdown();
-    }
-    
-    renderMessages() {
-        const container = document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container, .live-conversation-stream');
-        if (!container) {
-            console.warn('[LiveConversation] No conversation container found');
-            return;
-        }
-        
-        if (this.state.messages.length === 0) {
-            container.innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Loading live conversation data...
-                </div>
-            `;
-            return;
-        }
-        
-        const messagesHTML = this.state.messages.map(message => this.renderMessage(message)).join('');
-        container.innerHTML = messagesHTML;
-        
-        // Update message count display
-        this.updateMessageCount();
-    }
-    
-    renderMessage(message) {
-        const agentColors = {
-            'GPT': 'primary',
-            'CLD': 'success', 
-            'PPL': 'info',
-            'GMI': 'warning'
         };
         
-        const agentColor = agentColors[message.agent_name] || 'secondary';
-        const timestamp = new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
-        
-        return `
-            <div class="message-card card mb-3 border-0 shadow-sm" data-message-id="${message.id}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-${agentColor} me-2">${message.agent_name}</span>
-                            <small class="text-muted">${message.agent_type} • Round ${message.round}</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <small class="text-muted me-2">${timestamp}</small>
-                            <div class="live-indicator">
-                                <span class="badge bg-danger">
-                                    <i class="fas fa-circle pulse-animation"></i> LIVE
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <p class="card-text mb-3 text-dark">${message.content}</p>
-                    
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="source-info">
-                            <i class="fas fa-building me-1"></i>
-                            <small class="text-muted">Perfect Roofing Team Discussion</small>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm investigation-btn" 
-                                data-message-id="${message.id}"
-                                data-agent-type="${message.agent_type}"
-                                data-message-content="${encodeURIComponent(message.content)}"
-                                onclick="console.log('Investigation clicked for:', '${message.agent_type}'); window.liveConversationManager.showInvestigation('${message.agent_type}', '${encodeURIComponent(message.content)}', '${message.id}');">
-                            <i class="fas fa-search me-1"></i>Short Investigation
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    async showInvestigation(agentType, messageContent, messageId) {
-        console.log('[Investigation] Requesting investigation for:', agentType);
-        
-        try {
-            const response = await this.makeAPICall('/api/investigation', 'POST', {
-                agent_type: agentType,
-                message_content: messageContent,
-                message_id: messageId
-            });
-            
-            if (response.success) {
-                this.displayInvestigationModal(response);
-            } else {
-                throw new Error('Investigation request failed');
-            }
-        } catch (error) {
-            console.error('[Investigation] Error:', error);
-            this.showError('Unable to generate investigation. Please try again.');
-        }
-    }
-    
-    displayInvestigationModal(data) {
-        // Create modal if it doesn't exist
-        let modal = document.getElementById('investigation-modal');
-        if (!modal) {
-            modal = this.createInvestigationModal();
-        }
-        
-        // Populate modal content
-        const modalTitle = modal.querySelector('.modal-title');
-        const modalBody = modal.querySelector('.modal-body');
-        
-        modalTitle.textContent = 'AI Investigation Analysis';
-        
-        modalBody.innerHTML = `
-            <div class="investigation-content">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">
-                        <i class="fas fa-building me-2"></i>Perfect Roofing Team
-                    </h6>
-                    <span class="badge bg-success">
-                        <i class="fas fa-check-circle me-1"></i>AI Analysis
-                    </span>
-                </div>
-                
-                <div class="analysis-content mb-4">
-                    <h6><i class="fas fa-chart-line me-2"></i>Analysis Summary</h6>
-                    <div class="analysis-text">${data.summary}</div>
-                </div>
-                
-                <div class="recommendations-content">
-                    <h6><i class="fas fa-lightbulb me-2"></i>Key Insights</h6>
-                    <ul class="list-group list-group-flush">
-                        ${data.key_insights.map(insight => `
-                            <li class="list-group-item border-0 px-0">
-                                <i class="fas fa-arrow-right text-primary me-2"></i>${insight}
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-                
-                <div class="investigation-meta mt-4 pt-3 border-top">
-                    <small class="text-muted">
-                        <i class="fas fa-clock me-1"></i>Generated: ${new Date(data.analysis_date).toLocaleString()}
-                        <span class="ms-3">
-                            <i class="fas fa-robot me-1"></i>Agent: ${data.agent_type.toUpperCase()}
-                        </span>
-                    </small>
-                </div>
-            </div>
-        `;
-        
-        // Store investigation data for download/share
-        this.currentInvestigation = data;
-        
-        // Show modal
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-    }
-    
-    createInvestigationModal() {
-        const modal = document.createElement('div');
-        modal.className = 'modal fade';
-        modal.id = 'investigation-modal';
-        modal.innerHTML = `
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Investigation Analysis</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Content will be populated dynamically -->
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" id="download-investigation">
-                            <i class="fas fa-download me-1"></i>Download
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" id="print-investigation">
-                            <i class="fas fa-print me-1"></i>Print
-                        </button>
-                        <button type="button" class="btn btn-primary" id="share-investigation">
-                            <i class="fas fa-share-alt me-1"></i>Share
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        return modal;
-    }
-    
-    async makeAPICall(endpoint, method = 'GET', data = null) {
-        const url = `${this.config.BACKEND_URL}${endpoint}`;
+        const finalOptions = { ...defaultOptions, ...options };
         
         for (let attempt = 1; attempt <= this.config.RETRY_ATTEMPTS; attempt++) {
             try {
                 console.log(`[API] Attempt ${attempt} for ${endpoint}`);
                 
-                const options = {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    timeout: this.config.API_TIMEOUT
-                };
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), finalOptions.timeout);
                 
-                if (data && (method === 'POST' || method === 'PUT')) {
-                    options.body = JSON.stringify(data);
+                const response = await fetch(url, {
+                    ...finalOptions,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const response = await fetch(url, options);
-                const result = await response.json();
-                
-                console.log(`[API] Success for ${endpoint}:`, result);
-                return result;
+                const data = await response.json();
+                console.log(`[API] Success for ${endpoint}:`, data);
+                return { success: true, data };
                 
             } catch (error) {
                 console.warn(`[API] Attempt ${attempt} failed for ${endpoint}:`, error.message);
                 
                 if (attempt === this.config.RETRY_ATTEMPTS) {
                     console.error(`[API] All attempts failed for ${endpoint}`);
-                    throw error;
+                    return { success: false, error: error.message };
                 }
                 
-                // Wait before retry
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                // Exponential backoff
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
             }
         }
     }
     
-    startPolling() {
-        console.log('[LiveConversation] Starting polling for new messages...');
+    async loadLatestConversation() {
+        if (this.state.isLoading) return;
         
-        // Clear existing timers
-        this.stopPolling();
+        this.state.isLoading = true;
+        this.updateLoadingState(true);
         
-        // Start checking for new messages
-        this.timers.messageCheck = setInterval(() => {
-            this.checkForNewMessages();
-        }, this.config.MESSAGE_CHECK_INTERVAL);
-        
-        console.log('[LiveConversation] Polling started');
-    }
-    
-    stopPolling() {
-        if (this.timers.messageCheck) {
-            clearInterval(this.timers.messageCheck);
-            this.timers.messageCheck = null;
-        }
-        console.log('[LiveConversation] Polling stopped');
-    }
-    
-    async updateAPIStatus() {
         try {
-            const response = await this.makeAPICall('/api-status');
-            if (response.status === 'healthy') {
-                this.state.apiStatus = response.services || {
-                    openai: true,
-                    anthropic: true,
-                    perplexity: true,
-                    gemini: true
-                };
+            const result = await this.apiRequest('/api/live-conversation-latest');
+            
+            if (result.success && result.data) {
+                this.handleConversationData(result.data);
             } else {
-                this.state.apiStatus = {
-                    openai: false,
-                    anthropic: false,
-                    perplexity: false,
-                    gemini: false
-                };
+                this.handleAPIError(result.error || 'Unknown error');
             }
         } catch (error) {
-            console.error('[API Status] Error:', error);
-            this.state.apiStatus = {
-                openai: false,
-                anthropic: false,
-                perplexity: false,
-                gemini: false
-            };
+            console.error('[API] Unexpected error:', error);
+            this.handleAPIError(error.message);
+        } finally {
+            this.state.isLoading = false;
+            this.updateLoadingState(false);
         }
-        
-        this.updateAPIStatusDisplay();
     }
     
-    updateAPIStatusDisplay() {
-        const statusElements = {
-            'openai': document.querySelector('.api-status-openai'),
-            'anthropic': document.querySelector('.api-status-anthropic'),
-            'perplexity': document.querySelector('.api-status-perplexity'),
-            'gemini': document.querySelector('.api-status-gemini')
+    async checkSystemStatus() {
+        try {
+            const result = await this.apiRequest('/api/system-status');
+            
+            if (result.success && result.data) {
+                this.updateSystemStatus(result.data);
+            }
+        } catch (error) {
+            console.warn('[SystemStatus] Check failed:', error);
+        }
+    }
+    
+    handleConversationData(data) {
+        const {
+            business_name,
+            conversation_id,
+            messages = [],
+            topic,
+            next_conversation_time,
+            conversation_active = false,
+            round_number = 1,
+            total_messages = 0
+        } = data;
+        
+        // Update state
+        this.state.messages = messages;
+        this.state.currentTopic = topic;
+        this.state.lastUpdate = new Date();
+        this.state.conversationActive = conversation_active;
+        this.state.nextConversationTime = next_conversation_time ? new Date(next_conversation_time) : null;
+        this.state.roundInfo = {
+            roundNumber: round_number,
+            messageCount: total_messages,
+            messagesRemaining: Math.max(0, 16 - (total_messages % 16))
         };
         
-        Object.keys(statusElements).forEach(service => {
-            const element = statusElements[service];
-            if (element) {
-                const isActive = this.state.apiStatus[service];
-                element.className = isActive ? 'badge bg-success' : 'badge bg-danger';
-                element.innerHTML = isActive ? 
-                    `<i class="fas fa-check-circle me-1"></i>${service.toUpperCase()}` :
-                    `<i class="fas fa-times-circle me-1"></i>${service.toUpperCase()}`;
-            }
-        });
+        // Update UI
+        this.updateConversationDisplay();
+        this.updateBusinessInfo(business_name, conversation_id);
+        this.updateRoundInfo();
+        this.updateCountdown();
+        
+        console.log(`[ConversationData] Updated: ${messages.length} messages, Topic: ${topic}`);
     }
     
-    startCountdown() {
-        this.timers.countdown = setInterval(() => {
-            // Update countdown every second
-            this.updateCountdownDisplay();
-        }, 1000);
-    }
-    
-    updateCountdownDisplay(seconds = null) {
-        const countdownElement = document.querySelector('.next-message-countdown');
-        if (countdownElement) {
-            const timeLeft = seconds || Math.max(0, 45 - Math.floor((Date.now() - (this.state.lastUpdate?.getTime() || Date.now())) / 1000));
-            countdownElement.textContent = `Next message in: ${timeLeft}s`;
+    updateConversationDisplay() {
+        const container = document.getElementById('conversation-messages');
+        if (!container) return;
+        
+        if (this.state.messages.length === 0) {
+            container.innerHTML = this.getEmptyStateHTML();
+            return;
+        }
+        
+        const messagesHTML = this.state.messages.map(msg => this.createMessageHTML(msg)).join('');
+        container.innerHTML = messagesHTML;
+        
+        // Auto-scroll to latest message
+        const latestMessage = container.querySelector('.message-item:last-child');
+        if (latestMessage) {
+            latestMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     }
     
-    resetCountdown() {
-        this.state.lastUpdate = new Date();
+    createMessageHTML(message) {
+        const {
+            agent_name,
+            agent_type,
+            content,
+            timestamp,
+            round,
+            messageNumber
+        } = message;
+        
+        const agentConfig = this.getAgentConfig(agent_name, agent_type);
+        const formattedTime = this.formatTimestamp(timestamp);
+        const isEven = messageNumber % 2 === 0;
+        
+        return `
+            <div class="message-item ${isEven ? 'message-even' : 'message-odd'} animate__animated animate__fadeInUp" 
+                 data-round="${round}" data-message="${messageNumber}">
+                <div class="message-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="agent-avatar ${agentConfig.class}">
+                            <i class="${agentConfig.icon}"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0 fw-bold">${agent_name}</h6>
+                            <small class="text-muted">${agentConfig.description}</small>
+                        </div>
+                    </div>
+                    <div class="message-meta text-end">
+                        <small class="text-muted d-block">Round ${round} • Message ${messageNumber}</small>
+                        <small class="text-muted">${formattedTime}</small>
+                    </div>
+                </div>
+                <div class="message-content mt-3">
+                    <p class="mb-0">${this.escapeHTML(content)}</p>
+                </div>
+            </div>
+        `;
     }
     
-    updateTopicDisplay() {
-        const topicElements = document.querySelectorAll('.current-topic, .conversation-topic');
-        topicElements.forEach(element => {
-            if (element) {
-                element.textContent = this.state.currentTopic || 'Loading topic...';
+    getAgentConfig(agentName, agentType) {
+        const configs = {
+            'Business AI Assistant': {
+                icon: 'fas fa-briefcase',
+                class: 'bg-primary',
+                description: 'Business Strategy Expert'
+            },
+            'SEO AI Specialist': {
+                icon: 'fas fa-search',
+                class: 'bg-success',
+                description: 'SEO & Marketing Expert'
+            },
+            'Customer Service AI': {
+                icon: 'fas fa-headset',
+                class: 'bg-info',
+                description: 'Customer Experience Expert'
+            },
+            'Marketing AI Expert': {
+                icon: 'fas fa-chart-line',
+                class: 'bg-warning',
+                description: 'Marketing & Analytics Expert'
             }
+        };
+        
+        return configs[agentName] || {
+            icon: 'fas fa-robot',
+            class: 'bg-secondary',
+            description: 'AI Assistant'
+        };
+    }
+    
+    formatTimestamp(timestamp) {
+        if (!timestamp) return 'Just now';
+        
+        try {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+            
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return 'Recently';
+        }
+    }
+    
+    updateBusinessInfo(businessName, conversationId) {
+        // Update business name displays
+        const businessElements = document.querySelectorAll('.business-name, [data-business-name]');
+        businessElements.forEach(element => {
+            element.textContent = businessName || 'Perfect Roofing Team';
+        });
+        
+        // Update conversation ID displays
+        const conversationElements = document.querySelectorAll('.conversation-id, [data-conversation-id]');
+        conversationElements.forEach(element => {
+            element.textContent = `#${conversationId || 'N/A'}`;
+        });
+        
+        // Update topic displays
+        const topicElements = document.querySelectorAll('.current-topic, [data-current-topic]');
+        topicElements.forEach(element => {
+            element.textContent = this.state.currentTopic || 'Waiting for topic...';
         });
     }
     
     updateRoundInfo() {
-        const roundElement = document.querySelector('.round-info');
-        if (roundElement) {
-            roundElement.textContent = `Round ${this.state.roundInfo.roundNumber}`;
-        }
-    }
-    
-    updateMessageCount() {
-        const countElement = document.querySelector('.message-count');
-        if (countElement) {
-            countElement.textContent = `${this.state.messages.length} messages`;
-        }
-    }
-    
-    setLoadingState(isLoading) {
-        this.state.isLoading = isLoading;
+        const { roundNumber, messageCount, messagesRemaining } = this.state.roundInfo;
         
-        const loadingElements = document.querySelectorAll('.loading-indicator');
+        // Update round displays
+        const roundElements = document.querySelectorAll('.current-round, [data-current-round]');
+        roundElements.forEach(element => {
+            element.textContent = `Round ${roundNumber}`;
+        });
+        
+        // Update message count displays
+        const countElements = document.querySelectorAll('.message-count, [data-message-count]');
+        countElements.forEach(element => {
+            element.textContent = `${messageCount} messages`;
+        });
+        
+        // Update remaining messages
+        const remainingElements = document.querySelectorAll('.messages-remaining, [data-messages-remaining]');
+        remainingElements.forEach(element => {
+            element.textContent = `${messagesRemaining} remaining`;
+        });
+        
+        // Update progress bars
+        const progressBars = document.querySelectorAll('.conversation-progress');
+        progressBars.forEach(bar => {
+            const percentage = ((16 - messagesRemaining) / 16) * 100;
+            bar.style.width = `${percentage}%`;
+            bar.setAttribute('aria-valuenow', percentage);
+        });
+    }
+    
+    updateCountdown() {
+        if (!this.state.nextConversationTime) {
+            this.updateCountdownDisplay('Generating conversations...');
+            return;
+        }
+        
+        const now = new Date();
+        const nextTime = new Date(this.state.nextConversationTime);
+        const diffMs = nextTime - now;
+        
+        if (diffMs <= 0) {
+            this.updateCountdownDisplay('New conversation starting...');
+            return;
+        }
+        
+        const minutes = Math.floor(diffMs / 60000);
+        const seconds = Math.floor((diffMs % 60000) / 1000);
+        
+        this.updateCountdownDisplay(`Next conversation in ${minutes}:${seconds.toString().padStart(2, '0')}`);
+    }
+    
+    updateCountdownDisplay(text) {
+        const countdownElements = document.querySelectorAll('.next-conversation-countdown, [data-countdown]');
+        countdownElements.forEach(element => {
+            element.textContent = text;
+        });
+    }
+    
+    updateLocalTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+        const timeElements = document.querySelectorAll('.local-time, [data-local-time]');
+        timeElements.forEach(element => {
+            element.textContent = timeString;
+        });
+        
+        this.state.localTime = now;
+    }
+    
+    updateSystemStatus(status) {
+        this.state.systemRunning = status.system_running || false;
+        this.state.apiStatus = status.api_status || this.state.apiStatus;
+        
+        // Update API status indicators
+        Object.entries(this.state.apiStatus).forEach(([api, isActive]) => {
+            const indicators = document.querySelectorAll(`[data-api="${api}"]`);
+            indicators.forEach(indicator => {
+                indicator.className = indicator.className.replace(/bg-(success|danger)/, '');
+                indicator.classList.add(isActive ? 'bg-success' : 'bg-danger');
+                indicator.title = `${api.toUpperCase()}: ${isActive ? 'Active' : 'Inactive'}`;
+            });
+        });
+        
+        // Update system status indicator
+        const systemIndicators = document.querySelectorAll('.system-status, [data-system-status]');
+        systemIndicators.forEach(indicator => {
+            indicator.className = indicator.className.replace(/text-(success|danger)/, '');
+            indicator.classList.add(this.state.systemRunning ? 'text-success' : 'text-danger');
+            indicator.textContent = this.state.systemRunning ? 'System Online' : 'System Offline';
+        });
+    }
+    
+    updateLoadingState(isLoading) {
+        const loadingElements = document.querySelectorAll('.loading-indicator, [data-loading]');
         loadingElements.forEach(element => {
             element.style.display = isLoading ? 'block' : 'none';
         });
-    }
-    
-    showActivityPulse() {
-        const pulseElements = document.querySelectorAll('.pulse-animation');
-        pulseElements.forEach(element => {
-            element.classList.add('pulse-active');
-            setTimeout(() => {
-                element.classList.remove('pulse-active');
-            }, 2000);
+        
+        const refreshButtons = document.querySelectorAll('.btn-refresh, .refresh-feed');
+        refreshButtons.forEach(button => {
+            button.disabled = isLoading;
+            if (isLoading) {
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            } else {
+                button.innerHTML = '<i class="fas fa-sync"></i> Refresh';
+            }
         });
     }
     
-    showError(message) {
-        const errorContainer = document.querySelector('.error-container');
-        if (errorContainer) {
-            errorContainer.innerHTML = `
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <i class="fas fa-exclamation-triangle me-2"></i>${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-        } else {
-            console.error('[LiveConversation] Error:', message);
+    handleAPIError(error) {
+        console.error('[API] Error handling:', error);
+        
+        // Show error message in conversation area
+        const container = document.getElementById('conversation-messages');
+        if (container && this.state.messages.length === 0) {
+            container.innerHTML = this.getErrorStateHTML(error);
         }
-    }
-    
-    async refreshConversation() {
-        console.log('[LiveConversation] Manual refresh triggered');
-        await this.loadInitialConversation();
-        this.showNotification('Conversation refreshed', 'success');
-    }
-    
-    showNotification(message, type = 'info') {
-        // Create a simple notification
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
         
-        document.body.appendChild(notification);
-        
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
+        // Update status indicators
+        this.updateSystemStatus({
+            system_running: false,
+            api_status: {
+                openai: false,
+                anthropic: false,
+                perplexity: false,
+                gemini: false
             }
-        }, 3000);
+        });
     }
     
-    downloadInvestigation() {
-        if (!this.currentInvestigation) return;
+    async handleGenerateClick(event) {
+        const button = event.target.closest('button');
+        if (!button) return;
         
-        const content = `
-Investigation Analysis Report
-===========================
-
-Business: Perfect Roofing Team
-Agent: ${this.currentInvestigation.agent_type.toUpperCase()}
-Generated: ${new Date(this.currentInvestigation.analysis_date).toLocaleString()}
-
-Analysis Summary:
-${this.currentInvestigation.summary}
-
-Key Insights:
-${this.currentInvestigation.key_insights.map(insight => `• ${insight}`).join('\n')}
-
----
-Generated by Visitor Intel AI Platform
-        `;
+        button.disabled = true;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
         
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `investigation-analysis-${Date.now()}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-    
-    printInvestigation() {
-        if (!this.currentInvestigation) return;
-        
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Investigation Analysis Report</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        h1 { color: #333; }
-                        .meta { color: #666; margin-bottom: 20px; }
-                        .insights { margin-top: 20px; }
-                        .insights ul { list-style-type: disc; margin-left: 20px; }
-                    </style>
-                </head>
-                <body>
-                    <h1>Investigation Analysis Report</h1>
-                    <div class="meta">
-                        <strong>Business:</strong> Perfect Roofing Team<br>
-                        <strong>Agent:</strong> ${this.currentInvestigation.agent_type.toUpperCase()}<br>
-                        <strong>Generated:</strong> ${new Date(this.currentInvestigation.analysis_date).toLocaleString()}
-                    </div>
-                    
-                    <h2>Analysis Summary</h2>
-                    <p>${this.currentInvestigation.summary}</p>
-                    
-                    <div class="insights">
-                        <h2>Key Insights</h2>
-                        <ul>
-                            ${this.currentInvestigation.key_insights.map(insight => `<li>${insight}</li>`).join('')}
-                        </ul>
-                    </div>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-    }
-    
-    shareInvestigation() {
-        if (!this.currentInvestigation) return;
-        
-        const shareText = `Investigation Analysis - Perfect Roofing Team\n\n${this.currentInvestigation.summary}\n\nGenerated by Visitor Intel AI Platform`;
-        
-        if (navigator.share) {
-            navigator.share({
-                title: 'Investigation Analysis Report',
-                text: shareText,
-                url: window.location.href
+        try {
+            const result = await this.apiRequest('/api/generate-conversation', {
+                method: 'POST'
             });
-        } else {
-            // Fallback: copy to clipboard
-            navigator.clipboard.writeText(shareText).then(() => {
-                this.showNotification('Investigation analysis copied to clipboard!', 'success');
-            });
+            
+            if (result.success) {
+                // Immediately refresh to show new conversation
+                setTimeout(() => this.loadLatestConversation(), 1000);
+            } else {
+                console.error('[Generate] Failed:', result.error);
+            }
+        } catch (error) {
+            console.error('[Generate] Error:', error);
+        } finally {
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }, 3000);
         }
+    }
+    
+    getEmptyStateHTML() {
+        return `
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-comments fa-3x text-muted"></i>
+                </div>
+                <h5 class="text-muted">No conversations yet</h5>
+                <p class="text-muted">Waiting for AI agents to start their discussion...</p>
+                <button class="btn btn-primary btn-refresh">
+                    <i class="fas fa-sync"></i> Check for Updates
+                </button>
+            </div>
+        `;
+    }
+    
+    getErrorStateHTML(error) {
+        return `
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                </div>
+                <h5 class="text-warning">Connection Error</h5>
+                <p class="text-muted">Unable to load conversations: ${this.escapeHTML(error)}</p>
+                <button class="btn btn-warning btn-refresh">
+                    <i class="fas fa-sync"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+    
+    escapeHTML(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    
+    handleConversationUpdate(data) {
+        // Handle real-time updates from SocketIO
+        console.log('[SocketIO] Processing conversation update:', data);
+        this.handleConversationData(data);
     }
     
     destroy() {
         this.stopPolling();
-        if (this.timers.countdown) {
-            clearInterval(this.timers.countdown);
+        if (this.socket) {
+            this.socket.disconnect();
         }
+        console.log('[EnhancedLiveConversation] Destroyed');
     }
 }
 
-// Dashboard Controls Manager for business dashboards
-class DashboardControlsManager {
-    constructor() {
-        this.businessId = this.extractBusinessId();
-        this.init();
-    }
-    
-    extractBusinessId() {
-        const pathMatch = window.location.pathname.match(/\/business\/(\d+)/);
-        return pathMatch ? pathMatch[1] : '1';
-    }
-    
-    init() {
-        this.setupDashboardControls();
-        this.loadContentStatus();
-    }
-    
-    setupDashboardControls() {
-        document.addEventListener('click', (e) => {
-            const target = e.target.closest('button');
-            if (!target) return;
-            
-            const action = target.dataset.action;
-            const contentType = target.dataset.contentType;
-            
-            if (action && contentType) {
-                e.preventDefault();
-                this.handleDashboardAction(action, contentType, target);
-            }
-        });
-    }
-    
-    async handleDashboardAction(action, contentType, button) {
-        switch (action) {
-            case 'generate':
-                await this.generateContent(contentType);
-                break;
-            case 'view':
-                await this.viewContent(contentType);
-                break;
-            case 'download':
-                await this.downloadContent(contentType);
-                break;
-            case 'delete':
-                await this.deleteContent(contentType);
-                break;
-        }
-    }
-    
-    async generateContent(contentType) {
-        this.showNotification(`Generating ${contentType} content...`, 'info');
-        // Implementation would call backend API
-        setTimeout(() => {
-            this.showNotification(`${contentType} content generated successfully!`, 'success');
-        }, 2000);
-    }
-    
-    async viewContent(contentType) {
-        this.showContentModal(contentType, `Sample ${contentType} content for Perfect Roofing Team`);
-    }
-    
-    async downloadContent(contentType) {
-        this.showNotification(`Downloading ${contentType} content...`, 'info');
-    }
-    
-    async deleteContent(contentType) {
-        if (confirm(`Are you sure you want to delete the ${contentType} content?`)) {
-            this.showNotification(`${contentType} content deleted`, 'warning');
-        }
-    }
-    
-    async loadContentStatus() {
-        // Mock implementation - would call real API
-        console.log('[Dashboard] Loading content status for business:', this.businessId);
-    }
-    
-    updateButtonStates(status) {
-        // Update button states based on content status
-        Object.keys(status).forEach(contentType => {
-            const container = document.querySelector(`[data-content-type="${contentType}"]`);
-            if (container) {
-                const buttonContainer = container.querySelector('.button-container');
-                if (buttonContainer) {
-                    // Update buttons based on status
-                }
-            }
-        });
-    }
-    
-    showContentModal(contentType, content) {
-        // Create and show modal with content
-        const modal = document.createElement('div');
-        modal.className = 'modal fade';
-        modal.innerHTML = `
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">${contentType} Content</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <pre>${content}</pre>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-        
-        modal.addEventListener('hidden.bs.modal', () => {
-            modal.remove();
-        });
-    }
-    
-    showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 3000);
-    }
-}
-
-// Initialize based on page type
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[Main] DOM loaded, initializing systems...');
-    
-    // Check if we're on a business dashboard page
-    if (window.location.pathname.includes('/business/')) {
-        console.log('[Main] Business dashboard detected, initializing dashboard controls...');
-        window.dashboardManager = new DashboardControlsManager();
-    }
-    
-    // Always initialize live conversation manager if container exists
-    if (document.querySelector('.conversation-messages, .live-conversation-feed, #conversation-container, .live-conversation-stream')) {
-        console.log('[Main] Conversation container detected, initializing live conversation...');
-        window.liveConversationManager = new LiveConversationManager();
-    }
-    
-    console.log('[Main] All systems initialized successfully');
+    console.log('[Enhanced] Initializing Live Conversation Manager...');
+    window.liveConversationManager = new EnhancedLiveConversationManager();
 });
 
 // Cleanup on page unload

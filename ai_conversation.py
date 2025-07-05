@@ -5,6 +5,10 @@ import random
 import logging
 import requests
 import json
+import asyncio
+import aiohttp
+import threading
+from datetime import datetime, timedelta
 from typing import List, Tuple, Dict
 from google import genai
 import trafilatura
@@ -15,9 +19,19 @@ from subscription_manager import SubscriptionManager
 from geo_language_detector import geo_detector
 
 class AIConversationManager:
-    """Manages AI-to-AI conversations using 4 different AI services"""
+    """Enhanced AI-to-AI conversation manager with real-time capabilities"""
     
-    def __init__(self):
+    def __init__(self, app=None, socketio=None):
+        self.app = app
+        self.socketio = socketio
+        self.running = False
+        self.conversation_active = False
+        self.current_conversation_id = None
+        self.message_count = 0
+        self.round_number = 1
+        self.next_conversation_time = None
+        self.conversation_thread = None
+        
         # Initialize all 4 AI clients
         self.openai_client = openai.OpenAI(
             api_key=os.environ.get('OPENAI_API_KEY')
