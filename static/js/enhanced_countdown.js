@@ -18,7 +18,7 @@ class EnhancedCountdownTimer {
         this.container.innerHTML = `
             <div class="enhanced-countdown-container">
                 <div class="countdown-header">
-                    <h4>Next AI Conversation</h4>
+                    <h4 id="countdown-header-text">Next AI Conversation</h4>
                     <div class="countdown-status">
                         <span class="status-badge waiting">Waiting</span>
                     </div>
@@ -137,9 +137,31 @@ class EnhancedCountdownTimer {
     
     async fetchCountdownData() {
         try {
-            const response = await fetch('/api/countdown');
-            if (!response.ok) throw new Error('Failed to fetch countdown');
-            return await response.json();
+            const response = await fetch('/api/system-status');
+            if (!response.ok) throw new Error('Failed to fetch system status');
+            
+            const result = await response.json();
+            if (result.success && result.data) {
+                const data = result.data;
+                
+                // Calculate remaining seconds
+                let remaining_seconds = 0;
+                if (data.next_conversation_time) {
+                    const nextTime = new Date(data.next_conversation_time);
+                    const now = new Date();
+                    remaining_seconds = Math.max(0, Math.floor((nextTime - now) / 1000));
+                }
+                
+                // Return countdown data in expected format
+                return {
+                    remaining_seconds: remaining_seconds,
+                    state: data.conversation_status || (data.conversation_active ? 'active' : 'waiting'),
+                    next_time_local: data.next_conversation_time,
+                    conversation_active: data.conversation_active || false
+                };
+            } else {
+                throw new Error('Invalid response format');
+            }
         } catch (error) {
             console.error('Error fetching countdown:', error);
             return null;
@@ -186,6 +208,7 @@ class EnhancedCountdownTimer {
         const remainingText = document.getElementById('remaining-text');
         const progressFill = document.getElementById('progress-fill');
         const statusBadge = this.container.querySelector('.status-badge');
+        const headerText = document.getElementById('countdown-header-text');
         
         // Update countdown time
         countdownTime.textContent = this.formatTime(remainingSeconds);
@@ -208,13 +231,16 @@ class EnhancedCountdownTimer {
         const progress = Math.max(0, Math.min(100, ((totalSeconds - remainingSeconds) / totalSeconds) * 100));
         progressFill.style.width = `${progress}%`;
         
-        // Update status
-        if (data.state === 'waiting') {
-            statusBadge.textContent = 'Waiting';
-            statusBadge.className = 'status-badge waiting';
-        } else if (data.state === 'active') {
-            statusBadge.textContent = 'Active';
+        // Update status based on conversation_active or conversation_status
+        const isActive = data.conversation_active || data.state === 'active';
+        if (isActive) {
+            statusBadge.textContent = 'ACTIVE';
             statusBadge.className = 'status-badge active';
+            headerText.textContent = 'AI Conversation Active';
+        } else {
+            statusBadge.textContent = 'WAITING';
+            statusBadge.className = 'status-badge waiting';
+            headerText.textContent = 'Next AI Conversation';
         }
     }
     

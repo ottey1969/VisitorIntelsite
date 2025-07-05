@@ -358,13 +358,20 @@ class EnhancedLiveConversationManager {
         
         try {
             const date = new Date(timestamp);
-            // Always show the actual local time, not relative time
+            // Ensure we have a valid date
+            if (isNaN(date.getTime())) {
+                return 'Recently';
+            }
+            
+            // Format with seconds for unique display
             return date.toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
+                second: '2-digit',
                 hour12: true
             });
         } catch (error) {
+            console.warn('[Timestamp] Format error:', error, 'for timestamp:', timestamp);
             return 'Recently';
         }
     }
@@ -467,6 +474,22 @@ class EnhancedLiveConversationManager {
     updateSystemStatus(status) {
         this.state.systemRunning = status.system_running || false;
         this.state.apiStatus = status.api_status || this.state.apiStatus;
+        this.state.conversationActive = status.conversation_active || false;
+        this.state.nextConversationTime = status.next_conversation_time ? new Date(status.next_conversation_time) : null;
+        
+        // Update conversation status display (ACTIVE/WAITING)
+        const conversationStatus = status.conversation_status || (this.state.conversationActive ? 'active' : 'waiting');
+        const statusElements = document.querySelectorAll('.conversation-status-badge, [data-conversation-status]');
+        statusElements.forEach(element => {
+            element.className = element.className.replace(/(btn-success|btn-danger|badge-success|badge-danger)/, '');
+            if (conversationStatus === 'active') {
+                element.classList.add('btn-success', 'badge-success');
+                element.textContent = 'ACTIVE';
+            } else {
+                element.classList.add('btn-danger', 'badge-danger');
+                element.textContent = 'WAITING';
+            }
+        });
         
         // Update API status indicators
         Object.entries(this.state.apiStatus).forEach(([api, isActive]) => {
