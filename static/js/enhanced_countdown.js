@@ -113,7 +113,7 @@ class EnhancedCountdownTimer {
     
     async fetchCountdownData() {
         try {
-            const response = await fetch('/api/system-status');
+            const response = await fetch('/api/countdown');
             if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             
             const data = await response.json();
@@ -138,8 +138,9 @@ class EnhancedCountdownTimer {
                 return {
                     remaining_seconds: remaining_seconds,
                     state: data.conversation_status || (data.conversation_active ? 'active' : 'waiting'),
-                    next_time_local: data.next_conversation_time,
-                    conversation_active: data.conversation_active || false
+                    next_time_local: data.next_time_local || data.next_conversation_time,
+                    conversation_active: data.conversation_active || false,
+                    current_time: data.current_time || null
                 };
             } else {
                 throw new Error('Invalid response format');
@@ -151,7 +152,8 @@ class EnhancedCountdownTimer {
                 remaining_seconds: 0,
                 state: 'waiting',
                 next_time_local: null,
-                conversation_active: false
+                conversation_active: false,
+                current_time: null
             };
         }
     }
@@ -210,26 +212,37 @@ class EnhancedCountdownTimer {
         // Update countdown time
         countdownTime.textContent = this.formatTime(remainingSeconds);
         
-        // Update current local time
-        const now = new Date();
-        localTime.textContent = now.toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit', 
-            second: '2-digit',
-            hour12: true 
-        });
+        // Update current local time - use server current_time if available, otherwise local time
+        if (data.current_time) {
+            // Server provides current_time as ISO UTC string, convert to local time
+            const currentTime = new Date(data.current_time);
+            localTime.textContent = currentTime.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+            });
+        } else {
+            // Fallback to local browser time
+            const now = new Date();
+            localTime.textContent = now.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+            });
+        }
         
         // Update status based on conversation_active or conversation_status FIRST
         const isActive = data.conversation_active || data.state === 'active';
         
-        // Update next conversation time (convert from server UTC to local)
-        if (data.next_conversation_time && data.next_conversation_time !== null) {
-            // Server sends UTC time, convert to local
-            const nextTime = new Date(data.next_conversation_time + 'Z'); // Add Z to indicate UTC
-            const now = new Date();
+        // Update next conversation time - use proper UTC to local conversion
+        if (data.next_time_local && data.next_time_local !== null) {
+            // Server sends next_time_local as ISO UTC string, convert to local time
+            const nextTime = new Date(data.next_time_local);
             
             if (!isNaN(nextTime.getTime())) {
-                // Always show the actual next event time in user's local timezone
+                // Display the next event time in user's local timezone
                 nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', { 
                     hour: 'numeric', 
                     minute: '2-digit', 
