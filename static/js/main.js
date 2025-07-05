@@ -266,11 +266,18 @@ class EnhancedLiveConversationManager {
             return;
         }
         
-        const messagesHTML = this.state.messages.map(msg => this.createMessageHTML(msg)).join('');
+        // Sort messages by timestamp (newest first - reverse chronological order)
+        const sortedMessages = [...this.state.messages].sort((a, b) => {
+            const timeA = new Date(a.timestamp || 0);
+            const timeB = new Date(b.timestamp || 0);
+            return timeB - timeA; // Newest first
+        });
+        
+        const messagesHTML = sortedMessages.map(msg => this.createMessageHTML(msg)).join('');
         container.innerHTML = messagesHTML;
         
-        // Auto-scroll to latest message
-        const latestMessage = container.querySelector('.message-item:last-child');
+        // Auto-scroll to latest message (now at the top)
+        const latestMessage = container.querySelector('.message-item:first-child');
         if (latestMessage) {
             latestMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
