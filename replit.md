@@ -112,6 +112,12 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Public URLs**: `/public/conversation/{id}` format for each AI discussion
 
 ## Recent Changes
+- **July 05, 2025**: ENHANCED COUNTDOWN STATUS DISPLAY FIXED - Countdown now shows correct ACTIVE/WAITING status
+  - ✅ **Fixed API Connection**: Enhanced countdown now connects to `/api/system-status` instead of deprecated `/api/countdown`
+  - ✅ **Dynamic Status Display**: Shows "AI Conversation Active" + "ACTIVE" badge during conversations
+  - ✅ **Proper Waiting State**: Shows "Next AI Conversation" + "WAITING" badge between conversations
+  - ✅ **Real-time Updates**: Status updates every second based on actual conversation state
+  - ✅ **Error Resolution**: Eliminated "Error fetching countdown" console messages
 - **July 05, 2025**: REAL-TIME PROGRESSIVE MESSAGING SYSTEM COMPLETE - Messages now generate individually with 1-minute intervals
   - ✅ **Progressive Message Generation**: Messages are now created one by one in real-time, not saved all at once
   - ✅ **Precise 1-Minute Timing**: Each message is generated exactly 1 minute after the previous one
