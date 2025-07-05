@@ -219,35 +219,21 @@ class EnhancedCountdownTimer {
             hour12: true 
         });
         
+        // Update status based on conversation_active or conversation_status FIRST
+        const isActive = data.conversation_active || data.state === 'active';
+        
         // Update next conversation time (convert from server to local)
         if (data.next_time_local && data.next_time_local !== null) {
             const nextTime = new Date(data.next_time_local);
             const now = new Date();
             
             if (!isNaN(nextTime.getTime())) {
-                // During active conversation, show next message time or completion time
-                if (isActive) {
-                    if (nextTime > now) {
-                        nextConversationTime.textContent = `Next: ${nextTime.toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit', 
-                            hour12: true 
-                        })}`;
-                    } else {
-                        nextConversationTime.textContent = 'Generating message...';
-                    }
-                } else {
-                    // During waiting, only show future conversation times
-                    if (nextTime > now) {
-                        nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit', 
-                            hour12: true 
-                        });
-                    } else {
-                        nextConversationTime.textContent = 'Starting soon...';
-                    }
-                }
+                // Always show the actual next event time, never "Calculating..."
+                nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                });
             } else {
                 nextConversationTime.textContent = 'Calculating...';
             }
@@ -255,31 +241,41 @@ class EnhancedCountdownTimer {
             nextConversationTime.textContent = 'Calculating...';
         }
         
-        // Update remaining text  
-        if (remainingSeconds > 0) {
-            remainingText.textContent = this.formatRemainingText(remainingSeconds);
+        // Update remaining text and countdown behavior based on status
+        if (isActive) {
+            // ACTIVE state - conversation is happening
+            countdownTime.textContent = 'LIVE';
+            countdownTime.style.color = '#28a745';
+            remainingText.innerHTML = '🔴 <strong>4 AI Agents Are Having Live Discussion</strong>';
+            progressFill.style.width = '100%';
+            progressFill.style.background = '#28a745';
         } else {
-            remainingText.textContent = 'Waiting for next conversation cycle...';
+            // WAITING state - show countdown
+            countdownTime.style.color = 'white';
+            
+            if (remainingSeconds > 0) {
+                remainingText.innerHTML = `⏳ <strong>Waiting for Next AI Discussion</strong> (${this.formatRemainingText(remainingSeconds)})`;
+            } else {
+                remainingText.innerHTML = '🚀 <strong>Starting New Conversation...</strong>';
+            }
+            
+            // Update progress bar (21 minutes = 1260 seconds total cycle)
+            const totalSeconds = 21 * 60; // 21 minutes (16 messages + 5 minute break)
+            const progress = Math.max(0, Math.min(100, ((totalSeconds - remainingSeconds) / totalSeconds) * 100));
+            progressFill.style.width = `${progress}%`;
+            progressFill.style.background = 'rgba(255,255,255,0.8)';
         }
-        
-        // Update progress bar (21 minutes = 1260 seconds total cycle)
-        const totalSeconds = 21 * 60; // 21 minutes (16 messages + 5 minute break)
-        const progress = Math.max(0, Math.min(100, ((totalSeconds - remainingSeconds) / totalSeconds) * 100));
-        progressFill.style.width = `${progress}%`;
-        
-        // Update status based on conversation_active or conversation_status
-        const isActive = data.conversation_active || data.state === 'active';
         
         // Update status badge and header text
         if (statusBadge && headerText) {
             if (isActive) {
-                statusBadge.textContent = 'LIVE';
-                statusBadge.className = 'status-badge active';
-                headerText.textContent = '4 AI Agents Are Having Live Discussion';
+                statusBadge.textContent = 'ACTIVE';
+                statusBadge.className = 'status-badge ms-2 px-3 py-1 rounded-pill bg-success text-white';
+                headerText.textContent = 'AI Conversation Active';
             } else {
                 statusBadge.textContent = 'WAITING';
-                statusBadge.className = 'status-badge waiting';
-                headerText.textContent = 'Waiting for Next AI Discussion';
+                statusBadge.className = 'status-badge ms-2 px-3 py-1 rounded-pill bg-white text-primary';
+                headerText.textContent = 'Next AI Conversation';
             }
         }
         
