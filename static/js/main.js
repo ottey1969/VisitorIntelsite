@@ -254,6 +254,11 @@ class EnhancedLiveConversationManager {
         this.updateRoundInfo();
         this.updateCountdown();
         
+        // Apply mood color theme if available
+        if (conversation_id && window.applyMoodTheme) {
+            window.applyMoodTheme(conversation_id);
+        }
+        
         console.log(`[ConversationData] Updated: ${messages.length} messages, Topic: ${topic}`);
     }
     

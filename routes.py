@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify, Response
+from flask import render_template, request, redirect, url_for, flash, jsonify, Response, make_response
 from app import app, db
 from models import Business, Conversation, ConversationMessage, CreditPackage, Purchase
 from ai_conversation import AIConversationManager
@@ -18,7 +18,8 @@ import uuid
 import logging
 import base64
 import random
-from external_ai_integration import setup_ai_api_routes, external_ai_editor
+from external_ai_integration import setup_ai_api_routes
+from mood_color_generator import get_conversation_color_palette, get_conversation_theme_css, analyze_conversation_mood
 
 def has_premium_access(business):
     """Check if business has access to premium features (social media, infographics, etc.)"""
@@ -2318,6 +2319,55 @@ def get_countdown():
 def external_ai_interface():
     """Web interface for external AI to access and modify code"""
     return render_template('external_ai_interface.html')
+
+# Mood Color Generator API Routes
+@app.route('/api/conversation/<int:conversation_id>/mood')
+def get_conversation_mood_api(conversation_id):
+    """Get mood analysis for a conversation"""
+    try:
+        mood_scores = analyze_conversation_mood(conversation_id)
+        return jsonify({
+            'success': True,
+            'conversation_id': conversation_id,
+            'mood_scores': mood_scores,
+            'dominant_mood': max(mood_scores.keys(), key=lambda k: mood_scores[k]) if mood_scores else 'professional'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversation/<int:conversation_id>/colors')
+def get_conversation_colors_api(conversation_id):
+    """Get color palette for a conversation"""
+    try:
+        palette = get_conversation_color_palette(conversation_id)
+        return jsonify({
+            'success': True,
+            'conversation_id': conversation_id,
+            'palette': palette
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversation/<int:conversation_id>/theme.css')
+def get_conversation_theme_css_api(conversation_id):
+    """Get CSS theme for a conversation"""
+    try:
+        css_content = get_conversation_theme_css(conversation_id)
+        response = make_response(css_content)
+        response.headers['Content-Type'] = 'text/css'
+        response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
+        return response
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # Setup External AI API Routes
 setup_ai_api_routes(app)

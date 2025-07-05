@@ -34,6 +34,49 @@
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/style.css') }}?v=20250705" rel="stylesheet">
     
+    <!-- Mood Color System CSS -->
+    <style>
+        /* Default mood color variables */
+        :root {
+            --mood-primary: #6366f1;
+            --mood-secondary: #8b5cf6;
+            --mood-accent: #3b82f6;
+            --mood-background: #f8fafc;
+            --mood-text: #1e293b;
+            --mood-primary-light: #a5b4fc;
+            --mood-primary-dark: #4338ca;
+            --mood-secondary-light: #c4b5fd;
+        }
+        
+        /* Smooth transitions for mood color changes */
+        .conversation-container,
+        .message-item,
+        .agent-avatar,
+        .enhanced-countdown,
+        .btn-primary {
+            transition: all 0.3s ease;
+        }
+        
+        /* Mood indicator styling base */
+        .mood-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        
+        .mood-indicator::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+    </style>
+    
     <!-- Structured Data Schema -->
     <script type="application/ld+json">
     {
@@ -156,6 +199,7 @@
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/enhanced_countdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mood_color_manager.js') }}"></script>
     
     {% block extra_scripts %}{% endblock %}
 </body>

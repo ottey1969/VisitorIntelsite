@@ -193,6 +193,19 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Mood Color Toggle -->
+            <div class="text-center mb-4">
+                <div class="mood-color-toggle">
+                    <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                        <input class="form-check-input me-2" type="checkbox" id="moodColorToggle" checked onchange="toggleMoodColors(this.checked)">
+                        <label class="form-check-label small text-muted" for="moodColorToggle">
+                            <i class="fas fa-palette me-1"></i>Dynamic Mood Colors
+                        </label>
+                    </div>
+                    <small class="text-muted d-block mt-1">Colors adapt based on conversation sentiment</small>
+                </div>
+            </div>
         </div>
         
         <!-- Live AI Conversation Feed -->
