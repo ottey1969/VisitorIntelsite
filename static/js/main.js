@@ -364,12 +364,11 @@ class EnhancedLiveConversationManager {
     formatTimestamp(isoTimestamp) {
         if (!isoTimestamp) return '';
         try {
-            // Create a Date object from the ISO 8601 string
-            // JavaScript's Date constructor handles ISO 8601 strings correctly,
-            // interpreting 'Z' or '+00:00' as UTC and converting to local time.
-            const date = new Date(isoTimestamp);
-            
-            // Format to local time (e.g., 07:00 PM)
+            let timestampUTC = isoTimestamp;
+            if (!timestampUTC.endsWith('Z')) {
+                timestampUTC += 'Z';
+            }
+            const date = new Date(timestampUTC);
             return date.toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
