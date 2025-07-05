@@ -2200,15 +2200,37 @@ def get_countdown():
         from datetime import datetime, timedelta
         import pytz
         
-        # Get the last conversation time
-        last_conversation = Conversation.query.order_by(Conversation.id.desc()).first()
+        # Check if there's an active conversation in progress
+        from realtime_conversation import realtime_manager
+        active_conversations = realtime_manager.active_conversations
         
-        if last_conversation:
-            # Calculate next conversation time (30 minutes after last one)
-            next_time = last_conversation.created_at + timedelta(minutes=30)
+        if active_conversations:
+            # Get the active conversation details
+            conv_id = list(active_conversations.keys())[0]
+            conv_data = active_conversations[conv_id]
+            
+            # Calculate when this conversation will finish (16 messages total)
+            messages_remaining = conv_data['total_messages'] - conv_data['current_message']
+            minutes_remaining_for_current = messages_remaining
+            
+            # Add 5 minutes break after conversation ends
+            next_time = datetime.utcnow() + timedelta(minutes=minutes_remaining_for_current + 5)
         else:
-            # If no conversations, next one in 5 minutes
-            next_time = datetime.utcnow() + timedelta(minutes=5)
+            # No active conversation, check when last one ended
+            last_conversation = Conversation.query.filter_by(status='completed').order_by(Conversation.id.desc()).first()
+            
+            if last_conversation:
+                # Get the last message time from that conversation
+                last_message = ConversationMessage.query.filter_by(conversation_id=last_conversation.id).order_by(ConversationMessage.created_at.desc()).first()
+                if last_message:
+                    # Next conversation 5 minutes after last message
+                    next_time = last_message.created_at + timedelta(minutes=5)
+                else:
+                    # Fallback: 5 minutes from now
+                    next_time = datetime.utcnow() + timedelta(minutes=5)
+            else:
+                # If no conversations, next one in 5 minutes
+                next_time = datetime.utcnow() + timedelta(minutes=5)
         
         # Convert to UTC if needed
         if next_time.tzinfo is None:
@@ -2230,7 +2252,8 @@ def get_countdown():
             'next_time_local': next_time.isoformat(),
             'current_time': now.isoformat(),
             'state': state,
-            'conversation_interval_minutes': 30
+            'conversation_interval_minutes': 21,
+            'active_conversations': len(active_conversations) if 'active_conversations' in locals() else 0
         })
         
     except Exception as e:
