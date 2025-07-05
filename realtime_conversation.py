@@ -222,7 +222,7 @@ class RealtimeConversationManager:
             
             # Update conversation data
             conv_data['current_message'] += 1
-            conv_data['next_message_time'] = datetime.now() + timedelta(minutes=1)
+            conv_data['next_message_time'] = message.created_at + timedelta(minutes=1)
             
             logging.info(f"Generated message {message_index + 1}/{conv_data['total_messages']} for conversation {conv_data['conversation_id']}: {agent_name}")
             return True

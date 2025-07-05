@@ -138,7 +138,7 @@ class EnhancedCountdownTimer {
     async fetchCountdownData() {
         try {
             const response = await fetch('/api/system-status');
-            if (!response.ok) throw new Error('Failed to fetch system status');
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             
             const data = await response.json();
             if (data) {
@@ -170,7 +170,13 @@ class EnhancedCountdownTimer {
             }
         } catch (error) {
             console.error('Error fetching countdown:', error);
-            return null;
+            // Return a default state instead of null to prevent display errors
+            return {
+                remaining_seconds: 0,
+                state: 'waiting',
+                next_time_local: null,
+                conversation_active: false
+            };
         }
     }
     
@@ -201,13 +207,14 @@ class EnhancedCountdownTimer {
     }
     
     updateDisplay(data) {
-        if (!data || data.error) {
-            document.getElementById('countdown-time').textContent = 'Error';
-            document.getElementById('remaining-text').textContent = 'Unable to load countdown';
+        if (!data) {
+            document.getElementById('countdown-time').textContent = '00:00';
+            document.getElementById('remaining-text').textContent = 'Calculating next conversation...';
+            document.getElementById('next-conversation-time').textContent = 'Calculating...';
             return;
         }
         
-        const remainingSeconds = data.remaining_seconds;
+        const remainingSeconds = data.remaining_seconds || 0;
         const countdownTime = document.getElementById('countdown-time');
         const localTime = document.getElementById('local-time');
         const nextConversationTime = document.getElementById('next-conversation-time');
@@ -221,19 +228,38 @@ class EnhancedCountdownTimer {
         
         // Update current local time
         const now = new Date();
-        localTime.textContent = now.toLocaleTimeString();
+        localTime.textContent = now.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+        });
         
         // Update next conversation time (convert from server to local)
-        if (data.next_time_local) {
+        if (data.next_time_local && data.next_time_local !== null) {
             const nextTime = new Date(data.next_time_local);
-            nextConversationTime.textContent = nextTime.toLocaleTimeString();
+            if (!isNaN(nextTime.getTime())) {
+                nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                });
+            } else {
+                nextConversationTime.textContent = 'Calculating...';
+            }
+        } else {
+            nextConversationTime.textContent = 'Calculating...';
         }
         
-        // Update remaining text
-        remainingText.textContent = this.formatRemainingText(remainingSeconds);
+        // Update remaining text  
+        if (remainingSeconds > 0) {
+            remainingText.textContent = this.formatRemainingText(remainingSeconds);
+        } else {
+            remainingText.textContent = 'Waiting for next conversation cycle...';
+        }
         
-        // Update progress bar (30 minutes = 1800 seconds total)
-        const totalSeconds = 30 * 60; // 30 minutes
+        // Update progress bar (21 minutes = 1260 seconds total cycle)
+        const totalSeconds = 21 * 60; // 21 minutes (16 messages + 5 minute break)
         const progress = Math.max(0, Math.min(100, ((totalSeconds - remainingSeconds) / totalSeconds) * 100));
         progressFill.style.width = `${progress}%`;
         
@@ -251,19 +277,25 @@ class EnhancedCountdownTimer {
     }
     
     async updateCountdown() {
-        const data = await this.fetchCountdownData();
-        this.updateDisplay(data);
-        
-        // If conversation is starting soon (less than 10 seconds), prepare for active state
-        if (data && data.remaining_seconds <= 10 && data.remaining_seconds > 0) {
-            console.log('Conversation starting soon...');
-        }
-        
-        // If conversation should be active, refresh more frequently
-        if (data && data.state === 'active') {
-            this.interval = setTimeout(() => this.updateCountdown(), 5000); // 5 seconds for active
-        } else {
-            this.interval = setTimeout(() => this.updateCountdown(), 1000); // 1 second for waiting
+        try {
+            const data = await this.fetchCountdownData();
+            this.updateDisplay(data);
+            
+            // If conversation is starting soon (less than 10 seconds), prepare for active state
+            if (data && data.remaining_seconds <= 10 && data.remaining_seconds > 0) {
+                console.log('Conversation starting soon...');
+            }
+            
+            // If conversation should be active, refresh more frequently
+            if (data && data.state === 'active') {
+                this.interval = setTimeout(() => this.updateCountdown(), 5000); // 5 seconds for active
+            } else {
+                this.interval = setTimeout(() => this.updateCountdown(), 1000); // 1 second for waiting
+            }
+        } catch (error) {
+            console.error('Error in updateCountdown:', error);
+            // Continue with a default interval
+            this.interval = setTimeout(() => this.updateCountdown(), 1000);
         }
     }
     
