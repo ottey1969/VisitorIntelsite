@@ -1756,71 +1756,41 @@ def keepalive_generate():
 def system_status():
     """API endpoint for system status checks"""
     try:
-        # Check real-time conversation manager status
-        from main import realtime_manager
+        # Check VisitorIntelSystem status
+        from main import intel_system
         
-        conversation_active = False
-        conversation_status = "waiting"  # Default status
-        next_conversation_time = None
-        active_count = 0
-        
-        if realtime_manager and hasattr(realtime_manager, 'active_conversations'):
-            active_count = len(realtime_manager.active_conversations)
+        if intel_system:
+            # Get current state from the new system
+            state = intel_system.get_current_state()
             
-            if active_count > 0:
-                conversation_active = True
-                conversation_status = "active"  # Messages are generating
-                
-                # Find the next message time from active conversations
-                next_times = []
-                for conv_data in realtime_manager.active_conversations.values():
-                    if 'next_message_time' in conv_data:
-                        next_times.append(conv_data['next_message_time'])
-                
-                if next_times:
-                    next_conversation_time = min(next_times).isoformat()
-            else:
-                conversation_status = "waiting"  # Pause between conversations
-                
-                # Calculate next conversation time based on last completed conversation
-                from datetime import datetime, timedelta
-                import pytz
-                
-                # Get the last completed conversation
-                last_conversation = Conversation.query.filter_by(status='completed').order_by(Conversation.id.desc()).first()
-                
-                if last_conversation:
-                    # Get the last message time from that conversation
-                    last_message = ConversationMessage.query.filter_by(conversation_id=last_conversation.id).order_by(ConversationMessage.created_at.desc()).first()
-                    if last_message:
-                        # Next conversation starts 5 minutes after last message
-                        next_time = last_message.created_at + timedelta(minutes=5)
-                        # Ensure it's in the future
-                        now_utc = datetime.utcnow()
-                        if next_time <= now_utc:
-                            # If calculated time is in past, schedule next conversation for 5 minutes from now
-                            next_time = now_utc + timedelta(minutes=5)
-                        next_conversation_time = next_time.isoformat()
-                    else:
-                        # No messages found, schedule in 5 minutes
-                        next_conversation_time = (datetime.utcnow() + timedelta(minutes=5)).isoformat()
-                else:
-                    # No conversations yet, schedule in 5 minutes
-                    next_conversation_time = (datetime.utcnow() + timedelta(minutes=5)).isoformat()
-        
-        status = {
-            'system_running': True,
-            'api_status': {
-                'openai': True,
-                'anthropic': True,
-                'perplexity': True,
-                'gemini': True
-            },
-            'conversation_active': conversation_active,
-            'conversation_status': conversation_status,
-            'active_conversations_count': active_count,
-            'next_conversation_time': next_conversation_time
-        }
+            status = {
+                'system_running': True,
+                'api_status': {
+                    'openai': True,
+                    'anthropic': True,
+                    'perplexity': True,
+                    'gemini': True
+                },
+                'conversation_active': state.get('conversation_active', False),
+                'conversation_status': state.get('status', 'waiting').lower(),
+                'active_conversations_count': 1 if state.get('conversation_active', False) else 0,
+                'next_conversation_time': state.get('next_conversation_time')
+            }
+        else:
+            # Fallback to basic status
+            status = {
+                'system_running': True,
+                'api_status': {
+                    'openai': True,
+                    'anthropic': True,
+                    'perplexity': True,
+                    'gemini': True
+                },
+                'conversation_active': False,
+                'conversation_status': 'waiting',
+                'active_conversations_count': 0,
+                'next_conversation_time': None
+            }
         
         return jsonify(status)
         

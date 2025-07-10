@@ -165,31 +165,43 @@
                 </div>
             </div>
             
-            <!-- Enhanced Countdown Timer -->
+            <!-- Enhanced VisitorIntel Status Display -->
             <div id="enhanced-countdown" class="mb-4">
                 <div class="countdown-widget bg-gradient-primary text-white rounded-4 shadow-lg p-4 mb-4">
                     <div class="text-center">
                         <h5 class="fw-bold mb-3">
-                            <span id="countdown-header-text">AI Conversation Status</span>
+                            <span id="status-text">AI Conversation Status</span>
                             <span class="status-badge ms-2 px-3 py-1 rounded-pill bg-white text-primary" id="status-badge">WAITING</span>
                         </h5>
                         
                         <div class="countdown-display">
-                            <div class="time-display mb-2" id="countdown-time" style="font-size: 2.5em; font-weight: bold; font-family: monospace;">00:00</div>
+                            <div class="time-display mb-2" id="countdown-display" style="font-size: 2.5em; font-weight: bold; font-family: monospace;">00:00</div>
                             <div class="time-info">
-                                <div><strong>Local Time:</strong> <span id="local-time">Loading...</span></div>
-                                <div><strong>Next Event:</strong> <span id="next-conversation-time">Calculating...</span></div>
+                                <div><strong>Current Time:</strong> <span id="local-time">Loading...</span></div>
+                                <div><strong id="next-event-text">Next Event:</strong> <span id="next-event-time">Calculating...</span></div>
                             </div>
                         </div>
                         
-                        <div id="remaining-text" class="mt-3">Initializing countdown...</div>
+                        <div id="message-count" class="mt-3">0/16 messages</div>
                         
                         <div class="countdown-progress mt-3">
                             <div class="progress" style="height: 8px;">
-                                <div id="progress-fill" class="progress-bar bg-light" style="width: 0%;"></div>
+                                <div id="progress-bar" class="progress-bar bg-light" style="width: 0%;"></div>
                             </div>
                             <small class="opacity-75 mt-1 d-block">21-minute conversation cycles (16 messages + 5 min break)</small>
                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Enhanced Message Container -->
+            <div id="enhanced-messages" class="mb-4" style="display: none;">
+                <div class="bg-white rounded-4 shadow-sm p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-comments text-primary me-2"></i>Real-time Messages
+                    </h6>
+                    <div id="message-container" class="message-stream" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Messages will be inserted here by the frontend fix -->
                     </div>
                 </div>
             </div>
@@ -227,9 +239,10 @@
                     </div>
                     
                     <div class="card-body p-3">
-                        <!-- Live conversation stream - Shows 3 messages with scroll -->
+                        <!-- Live conversation stream - Enhanced with VisitorIntel integration -->
                         <div class="live-conversation-stream" id="publicLiveStream" style="max-height: 320px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; background-color: #f8f9fa;">
                             <!-- Messages will be dynamically inserted here -->
+                            <!-- Both existing demo messages and new real-time messages from VisitorIntel -->
                         </div>
                         
                         <!-- Loading indicator -->

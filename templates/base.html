@@ -196,7 +196,11 @@
     <!-- PayPal SDK -->
     <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
     
+    <!-- SocketIO for real-time updates -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
     <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/visitor_intel_frontend_fix.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/enhanced_countdown.js') }}"></script>
     <script src="{{ url_for('static', filename='js/mood_color_manager.js') }}"></script>
