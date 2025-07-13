@@ -192,12 +192,12 @@ class EnhancedCountdownTimer {
         
         // Update current local time
         const now = new Date();
-        localTime.textContent = now.toLocaleTimeString();
+        localTime.textContent = now.toISOString().substr(11, 8) + ' UTC';
         
-        // Update next conversation time (convert from server to local)
+        // Update next conversation time (convert from server to UTC)
         if (data.next_time_local) {
             const nextTime = new Date(data.next_time_local);
-            nextConversationTime.textContent = nextTime.toLocaleTimeString();
+            nextConversationTime.textContent = nextTime.toISOString().substr(11, 8) + ' UTC';
         }
         
         // Update remaining text

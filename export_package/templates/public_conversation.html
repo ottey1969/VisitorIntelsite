@@ -266,11 +266,7 @@
                 const now = new Date();
                 const offsetSeconds = messageIndex * 45; // 45 seconds between messages
                 const messageTime = new Date(now.getTime() - (offsetSeconds * 1000));
-                const currentTime = messageTime.toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: true 
-                });
+                const currentTime = messageTime.toISOString().substr(11, 8) + ' UTC';
                 
                 const messageHtml = `
                     <div class="message-block mb-4 p-4 border rounded-3 bg-white shadow-sm fade-in">
