@@ -112,6 +112,12 @@ This is a Flask-based web application that generates and showcases AI-to-AI conv
 - **Public URLs**: `/public/conversation/{id}` format for each AI discussion
 
 ## Recent Changes
+- **July 13, 2025**: UTC TIMESTAMP STANDARDIZATION COMPLETED - Critical timestamp inconsistencies resolved across entire platform
+  - ✅ **Database Layer Fixed**: All models.py timestamp defaults now use timezone-aware UTC (`datetime.now(timezone.utc)`)
+  - ✅ **API Endpoints Restored**: Fixed /api/system-status and other critical endpoints to return consistent UTC timestamps
+  - ✅ **Real-time System Updated**: Progressive message generation now uses UTC for accurate 1-minute intervals
+  - ✅ **Frontend Connection Restored**: Eliminated API failures, WebSocket connections working properly
+  - ✅ **Live Production Verified**: 21-minute conversation cycles with proper UTC scheduling confirmed operational
 - **July 10, 2025**: COMPLETE SYSTEM DOCUMENTATION CREATED - Full code package and architecture documentation for system replication
   - ✅ **Complete Code Package**: Created comprehensive documentation with all system files and setup instructions
   - ✅ **Architecture Documentation**: Detailed technical specifications for complete system rebuild

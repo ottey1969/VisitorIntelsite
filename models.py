@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Text, Boolean, Integer, String, DateTime, Float
 
 class Business(db.Model):
@@ -13,7 +13,7 @@ class Business(db.Model):
     industry = db.Column(db.String(100))
     is_unlimited = db.Column(Boolean, default=False)
     credits_remaining = db.Column(Integer, default=0)
-    created_at = db.Column(DateTime, default=datetime.utcnow)
+    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
     share_url = db.Column(String(500))
     plan_type = db.Column(String(50), default='basic')  # basic, enterprise
     custom_domain = db.Column(String(200))  # For enterprise customers
@@ -35,7 +35,7 @@ class Conversation(db.Model):
     business_id = db.Column(db.Integer, db.ForeignKey('business.id'), nullable=False)
     topic = db.Column(db.String(500), nullable=False)
     status = db.Column(db.String(50), default='active')  # active, completed, paused
-    created_at = db.Column(DateTime, default=datetime.utcnow)
+    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
     credits_used = db.Column(Integer, default=0)
     
     # Relationship to messages
@@ -47,7 +47,7 @@ class ConversationMessage(db.Model):
     ai_agent_name = db.Column(db.String(100), nullable=False)
     ai_agent_type = db.Column(db.String(50), nullable=False)  # openai, anthropic
     content = db.Column(Text, nullable=False)
-    created_at = db.Column(DateTime, default=datetime.utcnow)
+    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
     message_order = db.Column(Integer, nullable=False)
 
 class CreditPackage(db.Model):
@@ -66,7 +66,7 @@ class Purchase(db.Model):
     amount_paid = db.Column(Float, nullable=False)
     payment_id = db.Column(db.String(200))  # PayPal transaction ID
     status = db.Column(db.String(50), default='pending')  # pending, completed, failed
-    created_at = db.Column(DateTime, default=datetime.utcnow)
+    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class SocialMediaPost(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -80,7 +80,7 @@ class SocialMediaPost(db.Model):
     posted_time = db.Column(DateTime)
     status = db.Column(db.String(50), default='scheduled')  # scheduled, posted, failed
     engagement_count = db.Column(Integer, default=0)
-    created_at = db.Column(DateTime, default=datetime.utcnow)
+    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     business = db.relationship('Business', backref='social_posts')
     conversation = db.relationship('Conversation', backref='social_posts')
@@ -93,6 +93,6 @@ class SocialMediaSettings(db.Model):
     posting_times = db.Column(Text)  # JSON string of posting times
     auto_hashtags = db.Column(Boolean, default=True)
     include_business_name = db.Column(Boolean, default=True)
-    created_at = db.Column(DateTime, default=datetime.utcnow)
+    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     business = db.relationship('Business', backref='social_settings')

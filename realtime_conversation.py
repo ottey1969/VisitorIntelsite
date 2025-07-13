@@ -6,7 +6,7 @@ Generates messages one by one with 1-minute intervals
 import threading
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app import app, db
 from models import Business, Conversation, ConversationMessage
 from ai_conversation import AIConversationManager
@@ -61,7 +61,7 @@ class RealtimeConversationManager:
                             'topic': conversation.topic,
                             'messages': [],  # Will be generated progressively
                             'current_message': message_count,
-                            'next_message_time': datetime.now(),  # Generate next message immediately
+                            'next_message_time': datetime.now(timezone.utc),  # Generate next message immediately
                             'total_messages': 16,
                             'agents': [
                                 {'name': 'Business AI Assistant', 'type': 'openai'},
@@ -103,7 +103,7 @@ class RealtimeConversationManager:
                     'topic': topic,
                     'messages': [],  # Will be generated progressively
                     'current_message': 0,
-                    'next_message_time': datetime.now(),
+                    'next_message_time': datetime.now(timezone.utc),
                     'total_messages': 16,  # Standard 16-message conversation
                     'agents': [
                         {'name': 'Business AI Assistant', 'type': 'openai'},

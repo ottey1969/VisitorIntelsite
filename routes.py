@@ -5,7 +5,7 @@ from ai_conversation import AIConversationManager
 from payment_handler import PaymentHandler
 from content_ecosystem import ContentEcosystemManager
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import io
 from subscription_manager import SubscriptionManager
 from social_media_manager import SocialMediaManager
@@ -13,7 +13,6 @@ from infographic_generator import InfographicGenerator
 from auto_posting_scheduler import auto_scheduler
 from geo_language_detector import geo_detector
 from conversation_intelligence import ConversationIntelligence
-from datetime import datetime, timedelta
 import uuid
 import logging
 import base64
@@ -495,7 +494,7 @@ def api_status():
         'perplexity': ai_manager.apis_available['perplexity'],
         'gemini': ai_manager.apis_available['gemini'],
         'paypal': payment_handler.paypal_available,
-        'timestamp': datetime.utcnow().isoformat()
+        'timestamp': datetime.now(timezone.utc).isoformat()
     }
     
     return jsonify(status)
