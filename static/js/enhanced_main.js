@@ -199,16 +199,11 @@ class EnhancedLiveConversationManager {
     
     updateLocalTime() {
         const now = new Date();
-        const timeString = now.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        });
+        const timeString = now.toISOString().substr(11, 8) + ' UTC';
         
         this.state.localTime = timeString;
         
-        // Update local time displays
+        // Update UTC time displays
         const localTimeElements = document.querySelectorAll('.local-time-display, .current-time');
         localTimeElements.forEach(element => {
             element.textContent = timeString;

@@ -325,7 +325,7 @@
         // Log results
         function logResult(type, message) {
             const resultsDiv = document.getElementById('results');
-            const timestamp = new Date().toLocaleTimeString();
+            const timestamp = new Date().toISOString().substr(11, 8) + ' UTC';
             const colorClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'text-info';
             
             resultsDiv.innerHTML += `<div class="${colorClass}">

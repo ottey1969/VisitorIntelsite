@@ -184,24 +184,15 @@ class RobustCountdownTimer {
             // Update countdown time
             countdownTime.textContent = this.formatTime(remainingSeconds);
 
-            // Update local time
+            // Update UTC time
             const now = new Date();
-            localTime.textContent = now.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
+            localTime.textContent = now.toISOString().substr(11, 8) + ' UTC';
 
             // Update next conversation time
             if (data.next_conversation_time) {
                 const nextTime = new Date(data.next_conversation_time);
                 if (!isNaN(nextTime.getTime())) {
-                    nextConversationTime.textContent = nextTime.toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                    });
+                    nextConversationTime.textContent = nextTime.toISOString().substr(11, 8) + ' UTC';
                 } else {
                     nextConversationTime.textContent = 'Calculating...';
                 }

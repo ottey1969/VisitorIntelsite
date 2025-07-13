@@ -256,12 +256,7 @@ class VisitorIntelFrontend {
     
     formatUTCTime(date) {
         try {
-            return date.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'UTC'
-            });
+            return date.toISOString().substr(11, 8) + ' UTC';
         } catch (error) {
             console.error('[VisitorIntel] Error formatting time:', error);
             return 'Invalid Time';

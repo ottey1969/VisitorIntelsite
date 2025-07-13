@@ -651,11 +651,7 @@ function initializePublicLiveFeed() {
         const now = new Date();
         const minutesToSubtract = messageIndex * 2; // 2 minutes between each message
         const messageTime = new Date(now.getTime() - (minutesToSubtract * 60000));
-        const currentTime = messageTime.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-        });
+        const currentTime = messageTime.toISOString().substr(11, 8) + ' UTC';
         
         const messageHtml = `
             <div class="message-block mb-4 p-4 border rounded-3 bg-white shadow-sm fade-in">
@@ -726,11 +722,7 @@ function updateTimestamps() {
         
         // Update to show progressive time advancement (original time + 1 minute each update)
         const updatedTime = new Date(originalTime + (elapsedMinutes * 60000));
-        const newTimeString = updatedTime.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-        });
+        const newTimeString = updatedTime.toISOString().substr(11, 8) + ' UTC';
         timestamp.textContent = newTimeString;
     });
 }

@@ -369,11 +369,7 @@ class EnhancedLiveConversationManager {
                 timestampUTC += 'Z';
             }
             const date = new Date(timestampUTC);
-            return date.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
+            return date.toISOString().substr(11, 8) + ' UTC';
         } catch (e) {
             console.error('Error formatting timestamp:', e, isoTimestamp);
             return 'Invalid Time';
@@ -460,12 +456,7 @@ class EnhancedLiveConversationManager {
     
     updateLocalTime() {
         const now = new Date();
-        const timeString = now.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        });
+        const timeString = now.toISOString().substr(11, 8) + ' UTC';
         
         const timeElements = document.querySelectorAll('.local-time, [data-local-time]');
         timeElements.forEach(element => {

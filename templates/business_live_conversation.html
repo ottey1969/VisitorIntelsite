@@ -165,7 +165,7 @@
                 const messageElement = document.createElement('div');
                 messageElement.className = 'message-item mb-4 fade-in';
                 
-                const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const timestamp = new Date().toISOString().substr(11, 8) + ' UTC';
                 
                 messageElement.innerHTML = `
                     <div class="card border-0 shadow-sm">
